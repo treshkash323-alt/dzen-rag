@@ -1,0 +1,14 @@
+---
+description: Правила Cursor-филиала AIKIVAVIORA v.3
+globs: AIKIVAVIORA_v.3_Cursor/**
+alwaysApply: false
+---
+
+# AIKIVAVIORA v.3 Cursor
+
+- Писать код **только** в `AIKIVAVIORA_v.3_Cursor/`.
+- **Не изменять** `AIKIVAVIORA/`, `Claude/`, `Cursor/Projects/` без явного запроса.
+- Перед новым модулем — `00docs/ASSETS_REGISTRY.md`, спросить пользователя.
+- RAG: канон `02modules/dzen-rag/`, источник `RAG_SOURCE_PATH` на G:.
+- Секреты: `.env.example` only, не коммитить ключи.
+- Полные правила: `CURSOR.md`, `00docs/BRANCH_BOUNDARIES.md`.

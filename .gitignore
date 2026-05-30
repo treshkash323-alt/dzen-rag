@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Secrets
+.env
+*.pem
+
+# RAG / ML artifacts
+05data/rag_index/
+05data/playwright_dzen_profile/
+*.bin
+*.index
+chroma/
+
+# Node (frontend)
+node_modules/
+frontend/dist/
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+*.log
+07logs/*.log
