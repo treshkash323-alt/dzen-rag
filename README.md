@@ -52,6 +52,8 @@ uvicorn app:app --reload --port 8000
 
 ## Публичный GitHub
 
+**https://github.com/treshkash323-alt/dzen-rag**
+
 Перед push: `.\scripts\check-public-push.ps1`  
-Не публиковать: `.env`, `05data/rag_index/`, PDF канала, снимки с ключами.  
+Не публиковать: `.env`, `05data/rag_index/`, PDF канала.  
 Подробно: `PUBLIC_RELEASE.md`, `02modules/dzen-rag/SECURITY.md`
