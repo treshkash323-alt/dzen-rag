@@ -27,6 +27,12 @@ cd backend
 
 ChromaDB → `05data/rag_index/` (в `.gitignore`, не коммитить).
 
+## ДЗ-7 (сдача курса)
+
+- ПЗ: `09education/DZ-7_пояснительная_записка_dzen-rag.md`
+- **Чек-лист вручную:** `09education/DZ-7_ЧТО_СДЕЛАТЬ_ВРУЧНУЮ.md`
+- Публичный git: `PUBLIC_RELEASE.md`, `scripts/check-public-push.ps1`
+
 ## Связи
 
 - Legacy README: `Cursor/Projects/dzen-rag/README.md` (не дублировать код там)

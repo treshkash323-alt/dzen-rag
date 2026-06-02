@@ -31,11 +31,14 @@ git push -u origin master
 
 ## Первый push (если remote ещё нет)
 
+После создания пустого репозитория на GitHub:
+
 ```powershell
 git remote add origin https://github.com/<user>/<repo>.git
-git branch -M main
-git push -u origin main
+git push -u origin master
 ```
+
+В ПЗ (`09education/DZ-7_пояснительная_записка_dzen-rag.md`) вставьте URL репозитория в строку **«Репозиторий GitHub»**.
 
 ## После клонирования (для других / для себя на новой машине)
 
