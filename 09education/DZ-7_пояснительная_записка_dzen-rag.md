@@ -75,8 +75,8 @@ frontend /ui/  — чат в браузере
 | TrailCamp (урок 7) | Dzen RAG (этот проект) |
 |--------------------|-------------------------|
 | Gemini embeddings + Gemini Flash | sentence-transformers (локально) + DeepSeek / LM Studio |
-| POST `/upload` — загрузка файлов в API | Ingest с диска G: (`RAG_SOURCE_PATH`) |
-| React + Vite | Статический HTML/JS (`frontend/`) |
+| POST `/upload` — загрузка PDF/TXT | ✅ реализован + доп. ingest с G: |
+| React + Vite на :5173 | Статический UI `/ui/` на :8001 (две секции: upload + чат) |
 | `chroma_db/` в корне | `05data/rag_index/` |
 | Название TrailCamp | Канал «Канал про ИИ», модуль AIKIVAVIORA v.3 |
 
@@ -95,10 +95,11 @@ frontend /ui/  — чат в браузере
 
 | Метод | Путь | Назначение |
 |-------|------|------------|
-| GET | `/health` | Статус, число чанков, флаги LLM |
+| GET | `/health` | Статус, `docs_count`, флаги LLM |
+| POST | `/upload` | Загрузка PDF/TXT (методичка ДЗ-7) |
 | POST | `/ingest` | Переиндексация с G: |
-| POST | `/chat` | Вопрос → retrieval + ответ LLM |
-| GET | `/ui/` | Веб-чат |
+| POST | `/chat` | Вопрос (`query` / `question`) + ответ LLM |
+| GET | `/ui/` | Загрузка документов + чат |
 
 ### Результат ingest (модуль 1.3)
 

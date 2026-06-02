@@ -73,6 +73,45 @@ h1 {
 .badge--ok { color: var(--ok); border-color: #166534; }
 .badge--warn { color: var(--warn); border-color: #92400e; }
 
+.section-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.upload-row input[type="file"] {
+  flex: 1;
+  min-width: 200px;
+  color: var(--muted);
+}
+
+.upload-status {
+  margin: 0.65rem 0 0;
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
+
+.upload-status--ok {
+  color: var(--ok);
+}
+
+.upload-status--err {
+  color: #f87171;
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;

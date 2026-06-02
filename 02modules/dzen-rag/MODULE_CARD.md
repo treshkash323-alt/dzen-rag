@@ -4,7 +4,7 @@
 - NAME: `Dzen RAG (v.3 Cursor)`
 - ENTITY_TYPE: `MODULE`
 - PATH: `C:\Users\kash-\Python_kash\Cursor\AIKIVAVIORA_v.3_Cursor\02modules\dzen-rag`
-- STATUS: `working — paused 2026-05-30`
+- STATUS: `working — DZ-7 compliance pass 2026-05-30`
 - MATURITY_LEVEL: `MVP`
 - STRATEGIC_PRIORITY: `HIGH`
 - MIGRATION_STATUS: `NEXUS_NATIVE` (v.3 branch)
@@ -28,8 +28,10 @@
 2. Чат: http://127.0.0.1:8001/ui/
 3. Новый контент на G: → `tools/ingest_from_g.py --reset`
 
-## Не делано (следующая фаза)
+## Не делано (следующая фаза — см. `Cursor/Projects/TODO.md`)
 
+- [x] POST `/upload` + upload UI (ДЗ-7)
+- Зеркало в `Projects/ДЗ-7/` для сдачи
 - Telegram-бот
 - Авто-ingest по расписанию
 - Модули > 1.3 на G:

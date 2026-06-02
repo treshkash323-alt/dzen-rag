@@ -147,10 +147,11 @@ LM_STUDIO_MODEL=local-model
 
 ---
 
-## 9. Три endpoint (если через Swagger)
+## 9. Endpoint (Swagger /docs)
 
-| Endpoint | Зачем | Тело запроса |
+| Endpoint | Зачем | Тело / форма |
 |----------|-------|--------------|
-| GET `/health` | статус | — |
-| POST `/ingest` | переиндексация | `{"reset": true}` |
-| POST `/chat` | вопрос | `{"query": "...", "provider": "auto", "top_k": 5}` |
+| GET `/health` | статус, `docs_count` | — |
+| POST `/upload` | загрузка PDF/TXT (ДЗ-7) | multipart: `file` |
+| POST `/ingest` | переиндексация с G: | `{"reset": true}` |
+| POST `/chat` | вопрос | `{"query": "..."}` или `{"question": "..."}` |

@@ -2,11 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from aikivaviora_shared.rag.chunker import split_text
 from aikivaviora_shared.rag.config import RagSettings
-from aikivaviora_shared.rag.loaders import discover_documents, load_text
+from aikivaviora_shared.rag.loaders import (
+    discover_documents,
+    load_text,
+    load_text_from_bytes,
+)
 from aikivaviora_shared.rag.store import RagStore, make_chunk_id
+
+UPLOAD_SOURCE_NAME = "uploads"
 
 
 @dataclass
@@ -102,6 +109,55 @@ def ingest_directory(
 
     store.upsert_chunks(ids=ids, documents=documents, metadatas=metadatas)
     return result
+
+
+def ingest_uploaded_file(
+    settings: RagSettings,
+    filename: str,
+    content: bytes,
+) -> dict[str, Any]:
+    """Индексация одного файла из POST /upload (как в методичке ДЗ-7)."""
+    safe_name = Path(filename).name
+    suffix = Path(safe_name).suffix.lower()
+    if suffix not in {".pdf", ".txt", ".md"}:
+        raise ValueError("Only .pdf, .txt and .md are allowed")
+
+    text = load_text_from_bytes(safe_name, content)
+    if not text.strip():
+        return {"message": "Файл пустой", "chunks": 0, "filename": safe_name}
+
+    store = RagStore(settings)
+    store.delete_by_filename(safe_name)
+
+    chunks = split_text(text, settings.chunk_size, settings.chunk_overlap)
+    if not chunks:
+        return {"message": "Нет текста для индексации", "chunks": 0, "filename": safe_name}
+
+    ids: list[str] = []
+    documents: list[str] = []
+    metadatas: list[dict] = []
+
+    for idx, chunk in enumerate(chunks):
+        ids.append(f"{UPLOAD_SOURCE_NAME}/{safe_name}::{idx}")
+        documents.append(chunk)
+        metadatas.append(
+            {
+                "source": f"upload:{safe_name}",
+                "relative_path": safe_name,
+                "filename": safe_name,
+                "suffix": suffix,
+                "module": "upload",
+                "chunk_index": idx,
+                "chunk_total": len(chunks),
+            }
+        )
+
+    store.upsert_chunks(ids=ids, documents=documents, metadatas=metadatas)
+    return {
+        "message": "Загружено",
+        "chunks": len(chunks),
+        "filename": safe_name,
+    }
 
 
 def _module_hint(source_path: Path, rel_path: Path) -> str:

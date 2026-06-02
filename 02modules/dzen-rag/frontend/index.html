@@ -16,6 +16,16 @@
       <div id="health-badge" class="badge badge--loading">загрузка…</div>
     </header>
 
+    <section class="upload card">
+      <h2 class="section-title">Загрузка документа</h2>
+      <p class="hint">PDF или TXT — как в методичке ДЗ-7 (POST /upload). Повторная загрузка заменяет чанки этого файла.</p>
+      <form id="upload-form" class="upload-row">
+        <input id="upload-file" type="file" accept=".pdf,.txt,.md" required />
+        <button type="submit" class="btn btn--primary" id="upload-btn">Загрузить</button>
+      </form>
+      <p id="upload-status" class="upload-status"></p>
+    </section>
+
     <section class="controls card">
       <label>
         LLM
@@ -34,9 +44,10 @@
     </section>
 
     <main class="chat card">
+      <h2 class="section-title">Чат</h2>
       <div id="messages" class="messages">
         <div class="msg msg--system">
-          Задайте вопрос по модулю 1.3 и другим материалам на G:. Ответ строится по проиндексированным PDF и md.
+          Сначала загрузите PDF/TXT выше или проиндексируйте материалы с G:. Затем задайте вопрос по документам.
         </div>
       </div>
 

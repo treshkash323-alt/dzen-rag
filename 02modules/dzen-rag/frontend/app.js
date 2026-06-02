@@ -17,13 +17,31 @@ async function loadHealth() {
     const res = await fetch(`${API}/health`);
     const data = await res.json();
     const ds = data.llm_deepseek_configured ? "DeepSeek ✓" : "DeepSeek ✗";
-    const chunks = data.chunks_in_index ?? 0;
+    const chunks = data.docs_count ?? data.chunks_in_index ?? 0;
     badge.textContent = `${chunks} чанков · ${ds}`;
     badge.className = "badge " + (chunks > 0 ? "badge--ok" : "badge--warn");
   } catch {
     badge.textContent = "API недоступен";
     badge.className = "badge badge--warn";
   }
+}
+
+function setUploadStatus(text, ok) {
+  const node = el("upload-status");
+  node.textContent = text;
+  node.className =
+    "upload-status " + (ok === true ? "upload-status--ok" : ok === false ? "upload-status--err" : "");
+}
+
+async function uploadFile(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API}/upload`, { method: "POST", body: form });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || res.statusText);
+  }
+  return data;
 }
 
 function addMessage(kind, html) {
@@ -66,6 +84,33 @@ async function sendChat(query, provider, topK) {
 el("api-base").textContent = API;
 
 el("refresh-health").addEventListener("click", loadHealth);
+
+el("upload-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = el("upload-file");
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const btn = el("upload-btn");
+  btn.disabled = true;
+  btn.textContent = "Загрузка…";
+  setUploadStatus("");
+
+  try {
+    const data = await uploadFile(file);
+    setUploadStatus(
+      `${data.message}: ${data.chunks} фрагментов («${data.filename}»). Всего в базе: ${data.total_chunks_in_index ?? "?"}`,
+      true
+    );
+    await loadHealth();
+    input.value = "";
+  } catch (err) {
+    setUploadStatus(err.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Загрузить";
+  }
+});
 
 el("chat-form").addEventListener("submit", async (e) => {
   e.preventDefault();

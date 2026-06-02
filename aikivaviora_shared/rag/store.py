@@ -43,6 +43,14 @@ class RagStore:
             metadata={"hnsw:space": "cosine"},
         )
 
+    def delete_by_filename(self, filename: str) -> None:
+        if not filename or self.chunk_count == 0:
+            return
+        try:
+            self._collection.delete(where={"filename": filename})
+        except Exception:
+            pass
+
     def upsert_chunks(
         self,
         *,
