@@ -11,6 +11,11 @@ Provider = Literal["deepseek", "lm_studio"]
 
 
 def choose_provider(settings: RagSettings) -> Provider | None:
+    default = settings.llm_default
+    if default == "lm_studio" and settings.lm_studio_model:
+        return "lm_studio"
+    if default == "deepseek" and settings.deepseek_api_key:
+        return "deepseek"
     if settings.deepseek_api_key:
         return "deepseek"
     if settings.lm_studio_model:

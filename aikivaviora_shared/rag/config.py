@@ -48,11 +48,12 @@ class RagSettings:
     deepseek_base_url: str
     lm_studio_base_url: str
     lm_studio_model: str | None
+    llm_default: str = "auto"
     collection_name: str = COLLECTION_NAME
 
     @property
     def has_llm(self) -> bool:
-        return bool(self.deepseek_api_key) or bool(self.lm_studio_base_url)
+        return bool(self.deepseek_api_key) or bool(self.lm_studio_model)
 
 
 def load_settings() -> RagSettings:
@@ -81,4 +82,5 @@ def load_settings() -> RagSettings:
             "LM_STUDIO_BASE_URL", "http://127.0.0.1:1234/v1"
         ),
         lm_studio_model=os.environ.get("LM_STUDIO_MODEL") or None,
+        llm_default=os.environ.get("RAG_LLM_DEFAULT", "auto").strip().lower(),
     )

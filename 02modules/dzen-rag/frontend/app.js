@@ -16,9 +16,9 @@ async function loadHealth() {
   try {
     const res = await fetch(`${API}/health`);
     const data = await res.json();
-    const ds = data.llm_deepseek_configured ? "DeepSeek ✓" : "DeepSeek ✗";
+    const lm = data.llm_auto_resolves_to === "lm_studio" ? "LM Studio ✓" : data.llm_deepseek_configured ? "DeepSeek ✓" : "LLM ✗";
     const chunks = data.docs_count ?? data.chunks_in_index ?? 0;
-    badge.textContent = `${chunks} чанков · ${ds}`;
+    badge.textContent = `${chunks} чанков · ${lm}`;
     badge.className = "badge " + (chunks > 0 ? "badge--ok" : "badge--warn");
   } catch {
     badge.textContent = "API недоступен";
@@ -47,7 +47,7 @@ async function uploadFile(file) {
 function addMessage(kind, html) {
   const box = el("messages");
   const div = document.createElement("div");
-  div.className = `msg msg--${kind}`;
+  div.className = `msg msg--${kind} panel-rim panel-rim--soft`;
   div.innerHTML = html;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
@@ -59,7 +59,7 @@ function renderSources(sources) {
     .map((s, i) => {
       const name = s.metadata?.filename || s.metadata?.relative_path || `фрагмент ${i + 1}`;
       const score = s.score != null ? ` · score ${s.score}` : "";
-      return `<details class="source">
+      return `<details class="source panel-rim panel-rim--soft">
         <summary>${escapeHtml(name)}${score}</summary>
         <pre>${escapeHtml(s.text || "")}</pre>
       </details>`;
@@ -83,6 +83,53 @@ async function sendChat(query, provider, topK) {
 
 el("api-base").textContent = API;
 
+function initDropdowns() {
+  const wraps = document.querySelectorAll(".drop-wrap");
+
+  function closeAll() {
+    wraps.forEach((wrap) => {
+      const btn = wrap.querySelector(".btn-gold");
+      const panel = wrap.querySelector(".drop-panel");
+      if (!btn || !panel) return;
+      btn.setAttribute("aria-expanded", "false");
+      panel.hidden = true;
+    });
+  }
+
+  wraps.forEach((wrap) => {
+    const btn = wrap.querySelector(".btn-gold");
+    const panel = wrap.querySelector(".drop-panel");
+    if (!btn || !panel) return;
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = btn.getAttribute("aria-expanded") === "true";
+      closeAll();
+      if (!open) {
+        btn.setAttribute("aria-expanded", "true");
+        panel.hidden = false;
+      }
+    });
+  });
+
+  document.addEventListener("click", closeAll);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAll();
+  });
+}
+
+initDropdowns();
+
+function setFileNameLabel(file) {
+  const label = el("file-name");
+  if (!label) return;
+  label.textContent = file ? file.name : "не выбран";
+}
+
+el("upload-file")?.addEventListener("change", (e) => {
+  setFileNameLabel(e.target.files?.[0] || null);
+});
+
 el("refresh-health").addEventListener("click", loadHealth);
 
 el("upload-form").addEventListener("submit", async (e) => {
@@ -104,6 +151,7 @@ el("upload-form").addEventListener("submit", async (e) => {
     );
     await loadHealth();
     input.value = "";
+    setFileNameLabel(null);
   } catch (err) {
     setUploadStatus(err.message, false);
   } finally {

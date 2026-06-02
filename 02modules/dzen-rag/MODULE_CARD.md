@@ -4,7 +4,7 @@
 - NAME: `Dzen RAG (v.3 Cursor)`
 - ENTITY_TYPE: `MODULE`
 - PATH: `C:\Users\kash-\Python_kash\Cursor\AIKIVAVIORA_v.3_Cursor\02modules\dzen-rag`
-- STATUS: `working — DZ-7 compliance pass 2026-05-30`
+- STATUS: `ready for DZ-7 handoff — 2026-05-30`
 - MATURITY_LEVEL: `MVP`
 - STRATEGIC_PRIORITY: `HIGH`
 - MIGRATION_STATUS: `NEXUS_NATIVE` (v.3 branch)
@@ -19,7 +19,8 @@
 - Ingest: `.md` / `.txt` / `.pdf` → Chroma (`05data/rag_index/`)
 - Модуль 1.3 на G: проиндексирован: **18 файлов, 126 чанков**
 - FastAPI: `/health`, `/ingest`, `/chat` + DeepSeek / LM Studio
-- Frontend: `/ui/` (чат в браузере)
+- Frontend: `/ui/` (пополнение базы + чат + «О программе»)
+- Безопасность: `SECURITY.md` (лимиты upload/query, ingest path, CORS localhost)
 - Запуск: `start-api.bat` (ярлык на рабочий стол), `SHPARGALKA.md`
 
 ## Возобновление
@@ -31,7 +32,7 @@
 ## Не делано (следующая фаза — см. `Cursor/Projects/TODO.md`)
 
 - [x] POST `/upload` + upload UI (ДЗ-7)
-- Зеркало в `Projects/ДЗ-7/` для сдачи
+- [x] Зеркало в `Projects/ДЗ-7/dzen-rag-snapshot_30.05.2026/`
 - Telegram-бот
 - Авто-ingest по расписанию
 - Модули > 1.3 на G:

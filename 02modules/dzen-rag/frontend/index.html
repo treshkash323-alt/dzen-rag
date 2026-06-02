@@ -8,64 +8,259 @@
 </head>
 <body>
   <div class="layout">
-    <header class="header">
+    <header class="header panel-rim panel-rim--soft">
       <div>
         <h1>Dzen RAG</h1>
-        <p class="subtitle">Ассистент по материалам канала «Канал про ИИ»</p>
+        <p class="subtitle">Поиск и ответы по базе материалов Дзен-канала «Канал про ИИ»</p>
       </div>
-      <div id="health-badge" class="badge badge--loading">загрузка…</div>
+      <div
+        id="health-badge"
+        class="badge badge--loading"
+        data-tip="Число чанков в Chroma и активный LLM (LM Studio / DeepSeek)"
+      >
+        загрузка…
+      </div>
     </header>
 
-    <section class="upload card">
-      <h2 class="section-title">Загрузка документа</h2>
-      <p class="hint">PDF или TXT — как в методичке ДЗ-7 (POST /upload). Повторная загрузка заменяет чанки этого файла.</p>
+    <section class="product-brief panel-rim" aria-label="Назначение программы">
+      <p class="product-brief__lead">
+        Это <strong>RAG-ассистент</strong>, а не конвертер файлов: по вашим PDF и статьям канала
+        <em>ищет релевантные фрагменты</em> и формулирует ответ с указанием источников.
+      </p>
+      <ul class="product-brief__grid">
+        <li>
+          <span class="product-brief__tag">Чат</span>
+          <span>основной режим — вопросы по уже проиндексированным материалам модуля</span>
+        </li>
+        <li>
+          <span class="product-brief__tag">Загрузка</span>
+          <span>пополнение векторной базы: файл режется на чанки и добавляется в Chroma для поиска</span>
+        </li>
+        <li>
+          <span class="product-brief__tag">Не делает</span>
+          <span>не переводит PDF в другой формат и не публикует в Дзен — только индекс + Q&amp;A</span>
+        </li>
+      </ul>
+    </section>
+
+    <nav class="help-nav" aria-label="Справка">
+      <div class="drop-wrap">
+        <button
+          type="button"
+          class="btn-gold btn-interactive"
+          data-drop="program"
+          data-tip="Зачем программа, чем чат отличается от загрузки, для кого"
+          aria-expanded="false"
+          aria-controls="panel-program"
+        >
+          О программе
+        </button>
+        <div id="panel-program" class="drop-panel panel-rim drop-panel--wide" hidden>
+          <div class="drop-panel__scroll">
+            <p class="drop-lead"><strong>Dzen RAG</strong> — рабочий стол для ДЗ-7 и авторов AIKIVAVIORA</p>
+            <h3 class="drop-h3">Для каких задач</h3>
+            <ul class="compact-list">
+              <li>Быстро вспомнить содержание модуля, урока или PDF канала «Канал про ИИ»</li>
+              <li>Задать вопрос по-русски и получить ответ <em>только по проиндексированным текстам</em></li>
+              <li>Проверить цитату: под ответом раскрываются фрагменты-источники (файл + score)</li>
+              <li>Добавить новый PDF/TXT/MD в базу без ручной разметки (ingest через форму или API)</li>
+            </ul>
+            <h3 class="drop-h3">Чем отличаются блоки на экране</h3>
+            <dl class="glossary">
+              <dt>Чат (внизу)</dt>
+              <dd>Главная функция. Вы задаёте вопрос → поиск в Chroma → LLM (LM Studio / DeepSeek) собирает ответ из найденных чанков.</dd>
+              <dt>Загрузка документа</dt>
+              <dd>Вспомогательная: один файл уходит в векторную базу (POST <code>/upload</code>). Это <strong>пополнение знаний</strong>, не конвертация. Повтор той же книги заменяет её чанки.</dd>
+              <dt>Пакет с диска G:</dt>
+              <dd>Массовая индексация папки модуля — через API <code>/ingest</code> или скрипт (уже может быть сделана: счётчик чанков в бейдже).</dd>
+            </dl>
+            <h3 class="drop-h3">Кому полезно</h3>
+            <p>Авторам модулей Дзен, студентам курса VibeCoder, команде AIKIVAVIORA — когда нужен «умный поиск» по своим материалам, а не общий ChatGPT.</p>
+            <p class="drop-muted">Подробные шаги — кнопка «Как пользоваться». Термины — «Глоссарий».</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="drop-wrap">
+        <button
+          type="button"
+          class="btn-gold btn-interactive"
+          data-drop="about"
+          data-tip="Кто автор проекта, стек и связь с AIKIVAVIORA"
+          aria-expanded="false"
+          aria-controls="panel-about"
+        >
+          Об авторе
+        </button>
+        <div id="panel-about" class="drop-panel panel-rim" hidden>
+          <div class="drop-panel__scroll">
+            <p class="drop-lead"><strong>Игорь Кашинцев</strong> · веб-разработка · 2026</p>
+            <p><em>Dzen RAG</em> — учебно-рабочий модуль экосистемы <strong>AIKIVAVIORA</strong> (филиал Cursor v.3, ДЗ-7).</p>
+            <ul class="compact-list">
+              <li>Стек UI: HTML/CSS/JS, API FastAPI</li>
+              <li>Индекс: ChromaDB + локальные embeddings</li>
+              <li>LLM: LM Studio (локально) или DeepSeek (облако)</li>
+            </ul>
+            <p class="drop-muted">Курс VibeCoder · ДЗ-7 RAG · филиал Cursor v.3</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="drop-wrap">
+        <button
+          type="button"
+          class="btn-gold btn-interactive"
+          data-drop="glossary"
+          data-tip="Термины RAG, ingest, provider и слоты Дзен"
+          aria-expanded="false"
+          aria-controls="panel-glossary"
+        >
+          Глоссарий
+        </button>
+        <div id="panel-glossary" class="drop-panel panel-rim" hidden>
+          <div class="drop-panel__scroll">
+            <dl class="glossary">
+              <dt>RAG</dt>
+              <dd>Retrieval-Augmented Generation — сначала поиск фрагментов в базе, затем ответ LLM по ним.</dd>
+              <dt>Чанк</dt>
+              <dd>Кусок текста (~900 символов) для индекса; у каждого — источник (PDF/md).</dd>
+              <dt>Ingest</dt>
+              <dd>Загрузка материалов в Chroma: пакет с G: (<code>/ingest</code>) или файл (<code>/upload</code>).</dd>
+              <dt>Embeddings</dt>
+              <dd>Числовой «смысл» текста; похожие фрагменты находятся ближе в векторной базе.</dd>
+              <dt>top_k</dt>
+              <dd>Сколько фрагментов подтянуть в контекст перед ответом (1–20).</dd>
+              <dt>provider</dt>
+              <dd><code>auto</code> — из .env; <code>lm_studio</code> — локально; <code>deepseek</code> — облако; <code>none</code> — только цитаты.</dd>
+              <dt>score</dt>
+              <dd>Близость фрагмента к вопросу (выше ≈ релевантнее).</dd>
+              <dt>Слот 1F–9F</dt>
+              <dd>Время публикации в сетке модуля Дзен (видео, уроки, практика по ролям).</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      <div class="drop-wrap">
+        <button
+          type="button"
+          class="btn-gold btn-interactive"
+          data-drop="help"
+          data-tip="Краткая инструкция: загрузка → LLM → вопрос"
+          aria-expanded="false"
+          aria-controls="panel-help"
+        >
+          Как пользоваться
+        </button>
+        <div id="panel-help" class="drop-panel panel-rim" hidden>
+          <div class="drop-panel__scroll">
+            <ol class="compact-list numbered">
+              <li>Убедитесь, что в бейдже есть чанки (база уже с G: или загрузите PDF/TXT ниже).</li>
+              <li>Выберите LLM (<code>lm_studio</code> — если запущен LM Studio на :1234).</li>
+              <li>В <strong>Чате</strong> задайте конкретный вопрос по модулю — это основной сценарий.</li>
+              <li>Загрузка нужна только когда добавляете <em>новый</em> файл в базу, а не для каждого вопроса.</li>
+              <li>Раскройте источники под ответом — сверьте с PDF при сомнениях.</li>
+            </ol>
+            <p class="drop-muted">Off-topic: «Информация не найдена в базе знаний». Swagger: <a href="/docs">/docs</a></p>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <section class="upload card panel-rim">
+      <h2 class="section-title">Пополнение базы знаний</h2>
+      <p class="hint">
+        Опционально: добавить PDF, TXT или MD в векторную базу для поиска в чате (не конвертация).
+        Повтор того же файла заменяет его чанки.
+      </p>
       <form id="upload-form" class="upload-row">
-        <input id="upload-file" type="file" accept=".pdf,.txt,.md" required />
-        <button type="submit" class="btn btn--primary" id="upload-btn">Загрузить</button>
+        <label
+          class="file-picker"
+          data-tip="Выберите PDF, TXT или MD — файл попадёт в векторную базу (POST /upload)"
+        >
+          <span class="file-picker__btn">Выбрать файл</span>
+          <input id="upload-file" type="file" accept=".pdf,.txt,.md" required />
+          <span class="file-picker__name" id="file-name">не выбран</span>
+        </label>
+        <button
+          type="submit"
+          class="btn btn--primary btn-interactive"
+          id="upload-btn"
+          data-tip="Отправить файл в Chroma: разбивка на чанки и индексация"
+        >
+          Загрузить
+        </button>
       </form>
       <p id="upload-status" class="upload-status"></p>
     </section>
 
-    <section class="controls card">
-      <label>
+    <section class="controls card panel-rim">
+      <label
+        class="field-tip"
+        data-tip="Кто генерирует ответ: локально LM Studio, облако DeepSeek или только поиск без LLM"
+      >
         LLM
-        <select id="provider">
-          <option value="auto">auto (DeepSeek если есть ключ)</option>
-          <option value="deepseek">deepseek</option>
-          <option value="lm_studio">lm_studio</option>
+        <select id="provider" class="input-rim">
+          <option value="auto">auto (из .env: lm_studio / deepseek)</option>
+          <option value="lm_studio" selected>lm_studio (локально)</option>
+          <option value="deepseek">deepseek (облако)</option>
           <option value="none">none — только фрагменты</option>
         </select>
       </label>
-      <label>
+      <label
+        class="field-tip"
+        data-tip="Сколько фрагментов статей подставить в контекст LLM (1–20)"
+      >
         Фрагментов
-        <input id="top-k" type="number" min="1" max="20" value="5" />
+        <input id="top-k" class="input-rim" type="number" min="1" max="20" value="5" />
       </label>
-      <button type="button" id="refresh-health" class="btn btn--ghost">Обновить статус</button>
+      <button
+        type="button"
+        id="refresh-health"
+        class="btn btn--ghost btn-interactive"
+        data-tip="Обновить счётчик чанков и статус подключения LLM"
+      >
+        Обновить статус
+      </button>
     </section>
 
-    <main class="chat card">
-      <h2 class="section-title">Чат</h2>
-      <div id="messages" class="messages">
-        <div class="msg msg--system">
-          Сначала загрузите PDF/TXT выше или проиндексируйте материалы с G:. Затем задайте вопрос по документам.
+    <main class="chat card panel-rim">
+      <h2 class="section-title">Чат — вопросы по базе</h2>
+      <p class="hint hint--tight">Основной режим: задайте вопрос, если в бейдже уже есть чанки. Загрузка выше — только для новых файлов.</p>
+      <div id="messages" class="messages panel-rim panel-rim--inset">
+        <div class="msg msg--system panel-rim panel-rim--inset">
+          Задайте вопрос по материалам канала. Ответ строится из фрагментов в Chroma; при пустой базе — сначала индекс (G: или блок «Пополнение базы»).
         </div>
       </div>
 
       <form id="chat-form" class="composer">
-        <textarea
-          id="query"
-          rows="3"
-          placeholder="Например: Что делегировать ИИ инженеру?"
-          required
-        ></textarea>
-        <button type="submit" class="btn btn--primary" id="send-btn">Спросить</button>
+        <label
+          class="field-tip field-tip--block"
+          data-tip="Вопрос по проиндексированным материалам модуля (лучше конкретно, по-русски)"
+        >
+          <textarea
+            id="query"
+            class="input-rim"
+            rows="3"
+            placeholder="Например: Что делегировать ИИ инженеру?"
+            required
+          ></textarea>
+        </label>
+        <button
+          type="submit"
+          class="btn btn--primary btn-interactive"
+          id="send-btn"
+          data-tip="Поиск в базе + ответ выбранной LLM с указанием источников"
+        >
+          Спросить
+        </button>
       </form>
     </main>
 
-    <footer class="footer">
+    <footer class="footer panel-rim panel-rim--soft">
+      <span>© 2026 · Игорь Кашинцев · веб-разработка</span> ·
       API: <code id="api-base"></code> ·
-      <a href="/docs" target="_blank" rel="noreferrer">Swagger</a> ·
-      <a href="/health" target="_blank" rel="noreferrer">health</a>
+      <a href="/docs" target="_blank" rel="noreferrer" data-tip="Интерактивная документация API (Swagger)">Swagger</a>
     </footer>
   </div>
   <script src="/ui/app.js"></script>

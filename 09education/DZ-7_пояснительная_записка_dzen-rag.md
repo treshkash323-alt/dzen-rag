@@ -1,12 +1,12 @@
-# ДЗ-7 — пояснительная записка (промежуточная версия)
+# ДЗ-7 — пояснительная записка (версия к сдаче)
 
 **Студент:** Игорь Кашинцев  
 **Курс:** VibeCoder, Тема 7 — RAG + FastAPI + векторная база  
-**Проект:** Dzen RAG — ассистент по материалам канала «Канал про ИИ»  
+**Проект:** Dzen RAG — поиск и ответы по базе материалов канала «Канал про ИИ»  
 **Рабочая копия:** `Cursor/AIKIVAVIORA_v.3_Cursor/` (развивается дальше)  
-**Архив для сдачи:** позже копия в `Cursor/Projects/ДЗ-7/` (заморозка, не трогаем)  
+**Архив для сдачи:** `Cursor/Projects/ДЗ-7/dzen-rag-snapshot_30.05.2026/`  
 **Дата:** 30.05.2026  
-**Статус:** MVP — ingest, API, чат, фронт; интеграция с AIKIVAVIORA — следующая фаза
+**Статус:** готово к сдаче — ingest, `/upload`, `/chat`, UI с пояснением назначения, проверка безопасности
 
 > Формат по образцу: `02modules/dzen-rag/образец для дз-7 смотри здесь_ДЗ-6_отчёт_для_сдачи.docx`  
 > (и markdown-версия: `Projects/ДЗ-6/GOOGLE_DOC_черновик.md`)  
@@ -47,10 +47,11 @@
 > 1. Структура проекта `AIKIVAVIORA_v.3_Cursor` и модуль `02modules/dzen-rag`
 > 2. Запуск ingest: `tools/ingest_from_g.py --reset` (вывод: 18 файлов, 126 чанков)
 > 3. Swagger `/docs` — POST `/chat` с ответом DeepSeek
-> 4. Фронт: http://127.0.0.1:8001/ui/ — вопрос и ответ
-> 5. GET `/health` — `chunks_in_index: 126`, `llm_deepseek_configured: true`
-> 6. Файл `backend/.env` (**без ключа** — замазать sk-...)
-> 7. (опционально) Проводник G: — папка модуля 1.3
+> 4. Фронт: http://127.0.0.1:8001/ui/ — блок «Назначение», чат, пополнение базы
+> 5. GET `/health` — `chunks_in_index: 126`, LLM настроен
+> 6. POST `/chat` off-topic → «Информация не найдена в базе знаний»
+> 7. Файл `backend/.env` (**ключ замазан**)
+> 8. (опционально) Проводник G: — папка модуля 1.3
 
 Промпты и команды: `02modules/dzen-rag/SHPARGALKA.md`
 
@@ -76,7 +77,7 @@ frontend /ui/  — чат в браузере
 |--------------------|-------------------------|
 | Gemini embeddings + Gemini Flash | sentence-transformers (локально) + DeepSeek / LM Studio |
 | POST `/upload` — загрузка PDF/TXT | ✅ реализован + доп. ingest с G: |
-| React + Vite на :5173 | Статический UI `/ui/` на :8001 (две секции: upload + чат) |
+| React + Vite на :5173 | Статический UI `/ui/` на :8001 (пополнение базы + чат + справка «О программе») |
 | `chroma_db/` в корне | `05data/rag_index/` |
 | Название TrailCamp | Канал «Канал про ИИ», модуль AIKIVAVIORA v.3 |
 
@@ -167,8 +168,8 @@ http://127.0.0.1:8001/ui/
 **Рабочий проект (git):**  
 `C:\Users\kash-\Python_kash\Cursor\AIKIVAVIORA_v.3_Cursor\`
 
-**Копия для ДЗ-7 (сделать перед сдачей, не развивать):**  
-`C:\Users\kash-\Python_kash\Cursor\Projects\ДЗ-7\dzen-rag-snapshot_ДД.ММ.ГГГГ\`
+**Копия для ДЗ-7 (заморозка, не развивать):**  
+`C:\Users\kash-\Python_kash\Cursor\Projects\ДЗ-7\dzen-rag-snapshot_30.05.2026\`
 
 **В архив включить:**
 - исходники (`02modules/`, `aikivaviora_shared/`, `tools/`, `config/`, `00docs/` по необходимости)
@@ -203,10 +204,27 @@ http://127.0.0.1:8001/ui/
 
 ---
 
-## 10. Чек-лист перед сдачей
+## 10. Безопасность (аудит 30.05.2026)
+
+Подробно: `02modules/dzen-rag/SECURITY.md`
+
+| Проверка | Результат |
+|----------|-----------|
+| `.env` / ключи в git | ✅ только `.env.example`; `git ls-files **/.env` пусто |
+| Upload: тип и имя файла | ✅ whitelist `.pdf/.txt/.md`, `Path.name` |
+| Upload: размер | ✅ лимит `RAG_MAX_UPLOAD_MB` (25) |
+| Ingest: произвольный путь | ✅ только подкаталог `RAG_SOURCE_PATH` |
+| CORS | ✅ localhost origins (не `*` по умолчанию) |
+| XSS в UI | ✅ `escapeHtml` в `app.js` |
+| Auth на API | ⚠️ нет (норма для локального ДЗ; не публиковать в интернет) |
+
+---
+
+## 11. Чек-лист перед сдачей
 
 - [ ] Скрины в Google Doc (раздел 2)
-- [ ] Zip без `.env` и без индекса
-- [ ] Копия проекта в `Projects/ДЗ-7/` (архив)
-- [ ] Проверка `/chat` на 3–4 вопросах модуля 1.3
+- [ ] Zip без `.env`, без `05data/rag_index/`, без `.venv/`
+- [x] Копия проекта в `Projects/ДЗ-7/dzen-rag-snapshot_30.05.2026/`
+- [x] Git-коммит в `AIKIVAVIORA_v.3_Cursor`
+- [ ] Проверка `/chat` на 3–4 вопросах + 1 off-topic
 - [ ] Ссылка на Google Doc в форму сдачи
