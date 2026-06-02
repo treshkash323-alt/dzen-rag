@@ -28,7 +28,7 @@ AIKIVAVIORA_v.3_Cursor\
 ## 1. Первый раз — настройки
 
 ```powershell
-cd C:\Users\kash-\Python_kash\Cursor\AIKIVAVIORA_v.3_Cursor\02modules\dzen-rag\backend
+cd 02modules\dzen-rag\backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
@@ -50,7 +50,7 @@ copy ..\..\..\config\paths.example.env .env
 **Из корня проекта:**
 
 ```powershell
-cd C:\Users\kash-\Python_kash\Cursor\AIKIVAVIORA_v.3_Cursor
+cd <корень AIKIVAVIORA_v.3_Cursor>
 
 # один модуль:
 $env:RAG_SOURCE_PATH = "G:\3_Дзен\1G_канал про ИИ_статьи на Дзене\4_AIKIVAVIORA_база-RAG\модуль 1.3 - 24.05.2026"

@@ -3,18 +3,34 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+**/backend/.venv/
 *.egg-info/
 
-# Secrets
+# Secrets (никогда в публичный репозиторий)
 .env
+.env.local
+.env.*.local
 *.pem
+*.key
+credentials.json
+secrets.json
 
-# RAG / ML artifacts
+# RAG / ML artifacts (содержимое базы знаний)
 05data/rag_index/
 05data/playwright_dzen_profile/
+data/rag_source/**
+!data/rag_source/README.md
+!data/rag_source/.gitkeep
 *.bin
 *.index
 chroma/
+
+# Локальные снимки и домашки (не публиковать)
+**/dzen-rag-snapshot*/
+Projects/
+
+# Временные инвентари и черновики docs (списки файлов G:, сырые выгрузки)
+00docs/_*
 
 # Node (frontend)
 node_modules/
@@ -25,3 +41,6 @@ frontend/dist/
 Thumbs.db
 *.log
 07logs/*.log
+
+# Архивы сдачи (могут содержать .env по ошибке)
+*.zip

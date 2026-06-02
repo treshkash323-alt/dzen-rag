@@ -5,9 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SOURCE = Path(
-    r"G:\3_Дзен\1G_канал про ИИ_статьи на Дзене\4_AIKIVAVIORA_база-RAG"
-)
+# Локальная папка по умолчанию; для своих материалов задайте RAG_SOURCE_PATH в .env
+DEFAULT_SOURCE = PROJECT_ROOT / "data" / "rag_source"
 DEFAULT_INDEX = PROJECT_ROOT / "05data" / "rag_index"
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 SUPPORTED_SUFFIXES = {".md", ".txt", ".pdf"}

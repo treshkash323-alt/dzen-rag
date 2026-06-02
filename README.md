@@ -8,7 +8,7 @@
 | v.2 Claude | `Claude/Projects/AIKIVAVIORA.v.2/` | Claude Code |
 | VS Code / Codex | `AIKIVAVIORA/` | Codex, Copilot, NEXUS |
 | Домашки курса | `Cursor/Projects/ДЗ-*` | только материалы и сдача |
-| Контент Дзен | `Cursor/Dzen/`, `G:\3_Дзен\...` | не код |
+| Контент Дзен | вне репозитория (свой диск / `data/rag_source`) | не код |
 
 ## Принцип
 
@@ -30,9 +30,8 @@ python -m venv .venv
 pip install -r requirements.txt
 copy ..\..\..\config\paths.example.env .env
 
-# 2. Ingest модуля 1.3
+# 2. Ingest (положите PDF/MD в data/rag_source или задайте RAG_SOURCE_PATH в .env)
 cd ..\..\..
-$env:RAG_SOURCE_PATH = "G:\3_Дзен\1G_канал про ИИ_статьи на Дзене\4_AIKIVAVIORA_база-RAG\модуль 1.3 - 24.05.2026"
 python tools\ingest_from_g.py --reset
 
 # 3. API
@@ -48,4 +47,11 @@ uvicorn app:app --reload --port 8000
 - `00docs/ASSETS_REGISTRY.md` — реестр всех наработок
 - `00docs/BRANCH_BOUNDARIES.md` — границы филиалов
 - `00docs/RAG_ECOSYSTEM.md` — цепочка G: → ingest → API
-- `09education/DZ-7_пояснительная_записка_dzen-rag.md` — ПЗ для сдачи ДЗ-7 (промежуточная)
+- `09education/DZ-7_пояснительная_записка_dzen-rag.md` — ПЗ для сдачи ДЗ-7
+- `PUBLIC_RELEASE.md` — **чек-лист перед публичным push**
+
+## Публичный GitHub
+
+Перед push: `.\scripts\check-public-push.ps1`  
+Не публиковать: `.env`, `05data/rag_index/`, PDF канала, снимки с ключами.  
+Подробно: `PUBLIC_RELEASE.md`, `02modules/dzen-rag/SECURITY.md`

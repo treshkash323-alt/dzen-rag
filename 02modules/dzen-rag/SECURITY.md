@@ -31,6 +31,12 @@
 4. CORS только на свой домен фронта  
 5. Не отдавать `source_path` / `index_path` в публичном `/health` (или отдельный internal endpoint)
 
+## Публичный git push
+
+1. Прочитать `PUBLIC_RELEASE.md` в корне репозитория  
+2. Запустить `scripts/check-public-push.ps1`  
+3. Убедиться, что в remote нет индекса Chroma и материалов PDF канала  
+
 ## Проверка перед сдачей
 
 ```powershell

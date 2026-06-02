@@ -3,7 +3,7 @@
 - MODULE_ID: `module_dzen_rag`
 - NAME: `Dzen RAG (v.3 Cursor)`
 - ENTITY_TYPE: `MODULE`
-- PATH: `C:\Users\kash-\Python_kash\Cursor\AIKIVAVIORA_v.3_Cursor\02modules\dzen-rag`
+- PATH: `02modules/dzen-rag` (от корня филиала v.3)
 - STATUS: `ready for DZ-7 handoff — 2026-05-30`
 - MATURITY_LEVEL: `MVP`
 - STRATEGIC_PRIORITY: `HIGH`
