@@ -68,17 +68,11 @@
 
 ---
 
-## Шаг 4. GitHub (после создания репозитория)
+## Шаг 4. GitHub
 
-1. В корне `AIKIVAVIORA_v.3_Cursor`:
-   ```powershell
-   .\scripts\check-public-push.ps1
-   git remote add origin https://github.com/<user>/<repo>.git
-   git push -u origin master
-   ```
-   (или `main`, если переименуете ветку)
-2. В Google Doc **можно** добавить ссылку на репозиторий (для преподавателя удобно).
-3. В ПЗ раздел «Репозиторий» — вставьте URL репозитория (см. ниже в ПЗ).
+- [x] Репозиторий: **https://github.com/treshkash323-alt/dzen-rag** (ветка `master`, push выполнен 02.06.2026)
+- [ ] Добавить эту ссылку в **Google Doc** для преподавателя
+- [ ] При следующих правках: `.\scripts\check-public-push.ps1` → `git push`
 
 **Не пушить:** `.env`, индекс Chroma, PDF канала — они в `.gitignore`.
 
