@@ -1,0 +1,62 @@
+{
+  "ERR_PATH_OUTSIDE_ROOT": {
+    "title": "Путь вне каталога",
+    "cause": "Запрошенный путь выходит за CATALOG_ROOT.",
+    "actions": ["Проверьте относительный путь", "Откройте справку"],
+    "glossaryId": "catalog_root"
+  },
+  "ERR_READ_ONLY": {
+    "title": "Режим только чтение",
+    "cause": "Сохранение и удаление отключены.",
+    "actions": ["Снимите переключатель Read-only"],
+    "glossaryId": "read_only"
+  },
+  "ERR_LLM": {
+    "title": "LLM недоступен",
+    "cause": "Нет ключа DeepSeek или LM Studio не запущен.",
+    "actions": ["Проверьте .env", "Запустите LM Studio"],
+    "glossaryId": "llm_auto"
+  },
+  "ERR_RAR_V02": {
+    "title": "RAR — в v0.2",
+    "cause": "Распаковка RAR не входит в MVP.",
+    "actions": ["Используйте ZIP"],
+    "glossaryId": null
+  },
+  "ERR_ZIP_SLIP": {
+    "title": "Небезопасный ZIP",
+    "cause": "Архив содержит пути за пределами каталога.",
+    "actions": ["Другой архив", "Справка"],
+    "glossaryId": "zip_slip"
+  },
+  "ERR_SCAN_HANG": {
+    "title": "Сканирование зависло",
+    "cause": "Нет прогресса более 120 секунд.",
+    "actions": ["Подождать", "Остановить скан", "Открыть лог"],
+    "glossaryId": "scan"
+  },
+  "ERR_NOT_EDITABLE": {
+    "title": "Нельзя сохранить этот тип",
+    "cause": "В браузере правятся только .md и .txt. Для .bat, .py и др. — Cursor или VS Code.",
+    "actions": ["Откройте .md/.txt", "Справка"],
+    "glossaryId": null
+  },
+  "ERR_EXT": {
+    "title": "Тип файла не в списке MVP",
+    "cause": "Файл на диске есть; Catalog его не редактирует.",
+    "actions": ["Открыть в VS Code", "Скачать через Explorer"],
+    "glossaryId": null
+  },
+  "ERR_VALIDATION": {
+    "title": "Неверный запрос",
+    "cause": "Не сбой сети: пустой вопрос в чате (Ctrl+L) или неверное тело API. Catalog на :8002 при зелёном health работает.",
+    "actions": ["Введите текст вопроса", "Закрыть"],
+    "glossaryId": null
+  },
+  "ERR_LLM_HANG": {
+    "title": "LLM не отвечает",
+    "cause": "Нет ответа более 60 секунд.",
+    "actions": ["Остановить", "Проверить LM Studio"],
+    "glossaryId": "llm_auto"
+  }
+}

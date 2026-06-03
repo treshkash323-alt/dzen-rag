@@ -1,0 +1,13 @@
+# Заглушка для будущего Docker Compose (не обязателен для локального MVP)
+# docker build -f Dockerfile.stub -t aviora-catalog:stub .
+# docker run --rm -p 8002:8002 -v C:/Users/kash-/Python_kash:/data:ro aviora-catalog:stub
+
+FROM python:3.11-slim
+WORKDIR /app
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/ ./backend/
+COPY frontend/ ./frontend/
+ENV CATALOG_ROOT=/data
+EXPOSE 8002
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8002", "--app-dir", "backend"]

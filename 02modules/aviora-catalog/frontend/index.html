@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>AIKIVAVIORA Catalog</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
+  <link rel="stylesheet" href="/ui/style.css?v=0.3.8" />
+</head>
+<body>
+  <div id="splash" class="splash" aria-hidden="true">
+    <img src="/ui/assets/aviora_logo.png" alt="" class="splash__logo" />
+    <p>AIKIVAVIORA Catalog</p>
+  </div>
+  <div class="watermark" aria-hidden="true">
+    <img src="/ui/assets/aviora_logo.png" alt="" />
+  </div>
+
+  <div class="app-shell">
+    <header class="header panel-rim panel-rim--soft">
+      <div class="header__brand">
+        <img src="/ui/assets/aviora_logo.png" alt="Aviora" class="header__logo" />
+        <div>
+          <h1>AIKIVAVIORA Catalog</h1>
+          <p class="subtitle">Каталог Python_kash · порт 8002</p>
+        </div>
+      </div>
+      <div class="header__meta">
+        <div class="header-datetime" data-tip="Дата и время (ru-RU), обновление каждую секунду">
+          <span id="clock" class="clock" aria-live="polite"></span>
+        </div>
+        <div class="header-llm" data-tip="Провайдер чата и статус LM Studio / DeepSeek">
+          <select id="llm-provider-header" class="input-rim input-rim--compact" aria-label="LLM провайдер">
+            <option value="auto">auto</option>
+            <option value="lmstudio">lmstudio</option>
+            <option value="deepseek">deepseek</option>
+          </select>
+          <button type="button" id="btn-llm-refresh" class="btn-llm-ctl btn-gold btn-interactive" data-tip="Проверить LM Studio :1234">↻</button>
+          <button type="button" id="btn-llm-power" class="btn-llm-power btn-llm-power--on" data-tip="Вкл/выкл вызов LLM в чате">ON</button>
+          <span id="llm-status-pill" class="llm-status-pill llm-status-pill--checking" role="status" aria-live="polite">проверка…</span>
+        </div>
+        <span id="status-badge" class="badge badge--loading" data-tip="Индекс каталога и API">…</span>
+        <button type="button" id="btn-help" class="btn-gold btn-interactive" data-tip="Справка F1 / Ctrl+?">?</button>
+        <label class="ro-toggle" data-tip="Только просмотр — без save/delete">
+          <input type="checkbox" id="read-only-toggle" />
+          Read-only
+        </label>
+      </div>
+    </header>
+
+    <div class="ribbon toolbar panel-rim panel-rim--soft" role="toolbar" aria-label="Лента команд">
+      <div class="ribbon-top">
+        <div class="ribbon-tabs" role="tablist">
+          <button type="button" class="ribbon-tab ribbon-tab--on" data-tab="home" role="tab" aria-selected="true">Главная</button>
+          <button type="button" class="ribbon-tab" data-tab="view" role="tab">Вид</button>
+          <button type="button" class="ribbon-tab" data-tab="map" role="tab">Карта</button>
+          <button type="button" class="ribbon-tab" data-tab="studio" role="tab">Студия</button>
+          <button type="button" class="ribbon-tab" data-tab="service" role="tab">Сервис</button>
+        </div>
+        <div class="ribbon-quick">
+          <button type="button" id="btn-save" class="btn-gold btn-interactive ribbon-quick__btn" data-action="save" data-tip="Ctrl+S">Сохранить</button>
+          <button type="button" id="btn-scan" class="btn-gold btn-interactive ribbon-quick__btn" data-tip="Индекс">Scan</button>
+        </div>
+      </div>
+      <div class="ribbon-body">
+        <div class="ribbon-page" data-page="home">
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Файл</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="upload" data-tip="Загрузить"><span class="ribbon-labeled__icon">⬆</span><span class="ribbon-labeled__text">Upload</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="folder"><span class="ribbon-labeled__icon">📁</span><span class="ribbon-labeled__text">Папка</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="new"><span class="ribbon-labeled__icon">＋</span><span class="ribbon-labeled__text">New</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="open"><span class="ribbon-labeled__icon">📂</span><span class="ribbon-labeled__text">Открыть</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="share"><span class="ribbon-labeled__icon">⎘</span><span class="ribbon-labeled__text">Поделиться</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="explorer"><span class="ribbon-labeled__icon">🗁</span><span class="ribbon-labeled__text">Explorer</span></button>
+            </div>
+          </div>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Правка</span>
+            <div class="ribbon-panel__row">
+              <button type="button" id="btn-undo" class="ribbon-labeled" data-cmd="undo" disabled><span class="ribbon-labeled__icon">↶</span><span class="ribbon-labeled__text">Назад</span></button>
+              <button type="button" id="btn-redo" class="ribbon-labeled" data-cmd="redo" disabled><span class="ribbon-labeled__icon">↷</span><span class="ribbon-labeled__text">Вперёд</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="find"><span class="ribbon-labeled__icon">🔍</span><span class="ribbon-labeled__text">Найти</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="stop"><span class="ribbon-labeled__icon">■</span><span class="ribbon-labeled__text">Стоп</span></button>
+            </div>
+          </div>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Код</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="code-snapshot" data-tip="Дубликат в 05data/aviora_code_snapshots с индексом SEQ"><span class="ribbon-labeled__icon">⧉</span><span class="ribbon-labeled__text">Снимок</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="code-batch" data-tip="Все code-файлы текущей папки → batch-id"><span class="ribbon-labeled__icon">📋</span><span class="ribbon-labeled__text">Пакет</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="code-diff" data-tip="Сравнить два пути или SEQ"><span class="ribbon-labeled__icon">⇄</span><span class="ribbon-labeled__text">Diff</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="open-snapshots" data-tip="Папка снимков в дереве"><span class="ribbon-labeled__icon">📦</span><span class="ribbon-labeled__text">Архив</span></button>
+            </div>
+          </div>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Экспорт</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="export-html"><span class="ribbon-labeled__icon">H</span><span class="ribbon-labeled__text">HTML</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="export-txt"><span class="ribbon-labeled__icon">T</span><span class="ribbon-labeled__text">TXT</span></button>
+              <button type="button" class="ribbon-labeled ribbon-labeled--muted" data-cmd="export-docx"><span class="ribbon-labeled__icon">W</span><span class="ribbon-labeled__text">DOCX</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon-page" data-page="view" hidden>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Режим</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="mode-both"><span class="ribbon-labeled__icon">⊞</span><span class="ribbon-labeled__text">Превью+правка</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="mode-word"><span class="ribbon-labeled__icon">📄</span><span class="ribbon-labeled__text">Word</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="mode-edit"><span class="ribbon-labeled__icon">✎</span><span class="ribbon-labeled__text">Редактор</span></button>
+            </div>
+          </div>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Справка</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="logs"><span class="ribbon-labeled__icon">⌗</span><span class="ribbon-labeled__text">Логи</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="help"><span class="ribbon-labeled__icon">?</span><span class="ribbon-labeled__text">F1</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon-page" data-page="map" hidden>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Филиалы</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="show-map"><span class="ribbon-labeled__icon">🗺</span><span class="ribbon-labeled__text">Карта</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="map-cursor"><span class="ribbon-labeled__icon">C</span><span class="ribbon-labeled__text">Cursor v.3</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="map-claude"><span class="ribbon-labeled__icon">Cl</span><span class="ribbon-labeled__text">Claude</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="map-avi"><span class="ribbon-labeled__icon">Av</span><span class="ribbon-labeled__text">AIKIVAVIORA</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon-page" data-page="studio" hidden>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Figma-lite</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="figma"><span class="ribbon-labeled__icon">▦</span><span class="ribbon-labeled__text">Макет</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="figma-save"><span class="ribbon-labeled__icon">💾</span><span class="ribbon-labeled__text">Макет Save</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="figma-frame"><span class="ribbon-labeled__icon">□</span><span class="ribbon-labeled__text">Рамка</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="figma-note"><span class="ribbon-labeled__icon">📝</span><span class="ribbon-labeled__text">Стикер</span></button>
+            </div>
+          </div>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Фото</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="photo-hint"><span class="ribbon-labeled__icon">🖼</span><span class="ribbon-labeled__text">Открыть img</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="studio-help"><span class="ribbon-labeled__icon">i</span><span class="ribbon-labeled__text">Справка</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon-page" data-page="service" hidden>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Каталог</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="scan"><span class="ribbon-labeled__icon">◎</span><span class="ribbon-labeled__text">Scan</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="star"><span class="ribbon-labeled__icon">★</span><span class="ribbon-labeled__text">Закладка</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="reset"><span class="ribbon-labeled__icon">↺</span><span class="ribbon-labeled__text">Сброс</span></button>
+            </div>
+          </div>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Связь</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="dzen"><span class="ribbon-labeled__icon">RAG</span><span class="ribbon-labeled__text">Dzen :8001</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="file-input" hidden multiple />
+      <select id="export-format" class="input-rim" hidden aria-hidden="true">
+        <option value="html">html</option>
+        <option value="txt">txt</option>
+        <option value="docx">docx</option>
+      </select>
+    </div>
+
+    <nav class="branch-bar panel-rim panel-rim--soft" aria-label="Быстрый переход по филиалам">
+      <span class="branch-bar__label">Филиалы</span>
+      <button type="button" class="branch-quick__btn branch-quick__btn--on" data-cmd="branch-all" data-tip="Весь каталог Python_kash">Все</button>
+      <button type="button" class="branch-quick__btn" data-cmd="map-cursor" data-tip="Cursor/AIKIVAVIORA_v.3_Cursor">Cursor v.3</button>
+      <button type="button" class="branch-quick__btn" data-cmd="map-claude" data-tip="Claude/Projects">Claude</button>
+      <button type="button" class="branch-quick__btn" data-cmd="map-avi" data-tip="AIKIVAVIORA / NEXUS">AIKIVAVIORA</button>
+      <button type="button" class="branch-quick__btn" data-cmd="open-snapshots" data-tip="05data/aviora_code_snapshots">Снимки</button>
+      <button type="button" class="branch-quick__btn" data-cmd="show-map" data-tip="Таблица модулей и портов">Карта</button>
+    </nav>
+
+    <div id="scan-progress" class="scan-progress panel-rim panel-rim--soft" hidden aria-live="polite">
+      <div class="scan-progress__head">
+        <span id="scan-progress-label" class="scan-progress__label">Сканирование каталога…</span>
+        <span id="scan-progress-pct" class="scan-progress__pct">0%</span>
+        <button type="button" id="btn-scan-cancel" class="btn-gold btn-interactive scan-progress__stop" data-tip="Ctrl+. — остановить скан">Стоп</button>
+      </div>
+      <div
+        id="scan-progress-track"
+        class="scan-progress__track"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+      >
+        <div id="scan-progress-fill" class="scan-progress__fill"></div>
+      </div>
+      <p id="scan-progress-file" class="scan-progress__file">Ожидание…</p>
+    </div>
+
+    <main class="main-grid">
+      <aside class="panel panel-rim panel-scroll" id="panel-left">
+        <div class="panel__head">
+          <input type="search" id="search-input" class="input-rim" placeholder="Поиск — Enter" data-tip="После Scan: слово в пути/имени/тексте файла, Enter. Ctrl+K — фокус" />
+          <div class="chips" id="ext-chips">
+            <button type="button" data-ext="" class="chip chip--on">all</button>
+            <button type="button" data-ext=".md" class="chip">md</button>
+            <button type="button" data-ext=".pdf" class="chip">pdf</button>
+            <button type="button" data-ext=".jpg" class="chip">img</button>
+            <button type="button" data-ext=".zip" class="chip">zip</button>
+            <button type="button" data-ext=".py" class="chip">code</button>
+          </div>
+          <select id="branch-filter" class="input-rim" aria-label="Фильтр ветки" data-tip="Не модель ИИ — только фильтр папок Cursor/Claude">
+            <option value="">Ветка: все</option>
+            <option value="Cursor">Cursor</option>
+            <option value="Claude">Claude</option>
+            <option value="AIKIVAVIORA">AIKIVAVIORA</option>
+          </select>
+        </div>
+        <p id="tree-hint" class="tree-hint">📁 — папка. md/pdf — фильтр дерева. Поиск по всему каталогу: текст + Enter (нужен Scan, idx в шапке).</p>
+        <div id="tree" class="tree" role="tree"></div>
+        <div id="search-results" class="search-results" hidden></div>
+        <section class="starred panel-rim--inset">
+          <h3>Закладки</h3>
+          <ul id="starred-list"></ul>
+        </section>
+        <section class="recent panel-rim--inset">
+          <h3>Недавние</h3>
+          <ul id="recent-list"></ul>
+        </section>
+      </aside>
+
+      <section class="panel panel-rim panel-scroll" id="panel-center">
+        <div id="viewer-banner" class="banner" hidden></div>
+        <div id="viewer-empty" class="empty-state">
+          <p>Выберите файл слева или запустите <strong>Scan</strong>.</p>
+          <ul class="checklist">
+            <li>venv + pip install -r requirements.txt</li>
+            <li>copy .env.example → .env</li>
+            <li>LM Studio :1234 (опционально)</li>
+          </ul>
+        </div>
+        <div id="text-workspace" class="text-workspace" hidden>
+          <div class="text-mode-bar">
+            <button type="button" id="btn-mode-both" class="btn-gold btn-interactive text-mode-btn text-mode-btn--on">Превью + правка</button>
+            <button type="button" id="btn-mode-word" class="btn-gold btn-interactive text-mode-btn">Только Word</button>
+            <button type="button" id="btn-mode-edit" class="btn-gold btn-interactive text-mode-btn">Только редактор</button>
+            <button type="button" id="btn-mode-figma" class="btn-gold btn-interactive text-mode-btn">Макет (Figma)</button>
+            <span class="mode-hint">Лента сверху: Файл · Вид · Экспорт · Студия</span>
+          </div>
+          <div class="text-content-area">
+            <div class="preview-stack panel-rim panel-rim--inset">
+              <div id="word-preview" class="word-doc panel-scroll" title="Как страница Word"></div>
+              <div id="text-save-bar" class="text-save-bar text-save-bar--under-preview">
+                <button type="button" id="btn-save-inline" class="btn-gold btn-interactive btn-save-inline" data-action="save" data-tip="Сохранить .md / .txt (Ctrl+S)">
+                  Сохранить
+                </button>
+                <span id="save-path-label" class="save-path-label"></span>
+              </div>
+            </div>
+            <div id="find-bar" class="find-bar" hidden>
+              <input type="text" id="find-input" class="input-rim" placeholder="Найти в файле Ctrl+F" />
+              <button type="button" id="find-next" class="btn-gold btn-interactive">↓</button>
+              <button type="button" id="find-prev" class="btn-gold btn-interactive">↑</button>
+              <button type="button" id="find-close" class="btn-gold btn-interactive">×</button>
+            </div>
+            <textarea id="editor" class="editor input-rim" spellcheck="false"></textarea>
+          </div>
+        </div>
+        <div id="figma-workspace" class="figma-workspace" hidden>
+          <div class="figma-toolbar panel-rim--inset">
+            <button type="button" id="figma-add-frame" class="btn-gold btn-interactive">+ Рамка</button>
+            <button type="button" id="figma-add-note" class="btn-gold btn-interactive">+ Стикер</button>
+            <button type="button" id="btn-figma-save" class="btn-gold btn-interactive" data-tip="На диск рядом с файлом (.aviora.json)">Сохранить макет</button>
+            <button type="button" id="btn-figma-back" class="btn-gold btn-interactive">← К тексту</button>
+            <span id="figma-board-path" class="save-path-label"></span>
+          </div>
+          <div id="figma-canvas" class="figma-canvas panel-scroll" tabindex="0"></div>
+        </div>
+        <iframe id="pdf-view" class="pdf-view" hidden title="PDF"></iframe>
+        <div id="image-workspace" class="image-workspace" hidden>
+          <div class="image-toolbar">
+            <button type="button" id="img-rot-l" class="btn-gold btn-interactive">↺ 90°</button>
+            <button type="button" id="img-rot-r" class="btn-gold btn-interactive">↻ 90°</button>
+            <button type="button" id="img-flip-h" class="btn-gold btn-interactive">Flip H</button>
+            <button type="button" id="img-flip-v" class="btn-gold btn-interactive">Flip V</button>
+            <button type="button" id="img-crop" class="btn-gold btn-interactive">Crop</button>
+            <button type="button" id="img-save" class="btn-gold btn-interactive">Save image</button>
+          </div>
+          <div class="image-stage">
+            <img id="crop-image" alt="" />
+          </div>
+          <div class="image-props panel-rim--inset">
+            <label>W <input type="number" id="img-w" class="input-rim" /></label>
+            <label>H <input type="number" id="img-h" class="input-rim" /></label>
+            <label>Format
+              <select id="img-format" class="input-rim">
+                <option value="jpeg">JPEG</option>
+                <option value="png">PNG</option>
+                <option value="webp">WebP</option>
+              </select>
+            </label>
+            <label>Quality <input type="range" id="img-quality" min="1" max="100" value="85" /></label>
+            <label>Zoom <input type="range" id="img-zoom" min="25" max="200" value="100" /></label>
+          </div>
+        </div>
+        <pre id="preview-text" class="preview-text" hidden></pre>
+        <div id="zip-panel" class="zip-panel" hidden>
+          <ul id="zip-list"></ul>
+          <button type="button" id="zip-extract" class="btn-gold btn-interactive">Extract here</button>
+        </div>
+        <div id="props-panel" class="props-panel panel-rim--inset" hidden></div>
+      </section>
+
+      <aside class="panel panel-rim panel-scroll" id="panel-right">
+        <div class="chat-head">
+          <select id="llm-provider" class="input-rim" data-tip="auto | deepseek | lmstudio">
+            <option value="auto">auto</option>
+            <option value="deepseek">deepseek</option>
+            <option value="lmstudio">lmstudio</option>
+          </select>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div id="chat-busy" class="chat-busy" hidden aria-live="polite">
+          <span class="chat-busy__spinner"></span>
+          <span id="chat-busy-text">Отправка в LM Studio…</span>
+        </div>
+        <form id="chat-form" class="chat-form" onsubmit="return false">
+          <p id="chat-hint" class="chat-hint">Send — вопрос по каталогу (после Scan). LM Studio :1234 или DeepSeek</p>
+          <textarea id="chat-input" class="input-rim" rows="2" placeholder="Вопрос по файлу Ctrl+L"></textarea>
+          <button type="button" id="btn-chat-send" class="btn-gold btn-interactive">Send</button>
+        </form>
+      </aside>
+    </main>
+
+    <section id="logs-panel" class="logs-panel panel-rim" hidden>
+      <div class="logs-head">
+        <span>Logs / Debug</span>
+        <button type="button" id="logs-clear" class="btn-gold btn-interactive">Clear</button>
+        <button type="button" id="logs-download" class="btn-gold btn-interactive">Download log</button>
+      </div>
+      <pre id="logs-body" class="panel-scroll logs-body"></pre>
+    </section>
+
+    <footer class="footer panel-rim panel-rim--soft">
+      <span>© 2026 · <strong>Игорь Кашинцев</strong> · веб-разработка</span> ·
+      <span id="footer-version">v0.3.8</span> ·
+      <span id="footer-health">health …</span> ·
+      API: <code id="footer-api-base">http://127.0.0.1:8002</code> ·
+      <a href="/docs" target="_blank" rel="noreferrer" data-tip="Swagger API">Swagger</a> ·
+      <a href="http://127.0.0.1:8001/ui/" target="_blank" rel="noopener">Dzen RAG :8001</a> ·
+      <span id="footer-billing">Billing: off</span> ·
+      <span id="footer-tokens">tokens: 0</span>
+    </footer>
+  </div>
+
+  <div id="tip-float" hidden role="tooltip"></div>
+  <div id="toast" class="toast" hidden></div>
+  <div id="open-modal" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal__box panel-rim">
+      <h2>Открыть файл</h2>
+      <p class="subtitle">Относительный путь от корня каталога (Ctrl+O)</p>
+      <input type="text" id="open-path-input" class="input-rim" style="width:100%" />
+      <div class="modal__actions">
+        <button type="button" id="open-path-go" class="btn-gold btn-interactive">Открыть</button>
+        <button type="button" id="open-path-cancel" class="btn-gold btn-interactive">Отмена</button>
+      </div>
+    </div>
+  </div>
+  <div id="modal" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal__box panel-rim">
+      <h2 id="modal-title"></h2>
+      <p id="modal-body"></p>
+      <div id="modal-actions" class="modal__actions"></div>
+    </div>
+  </div>
+  <div id="diff-modal" class="modal" hidden role="dialog" aria-modal="true">
+    <div class="modal__box modal__box--wide panel-rim">
+      <h2>Сравнение (diff)</h2>
+      <p class="subtitle">Путь от корня Python_kash или номер SEQ (например 1 или 000001)</p>
+      <div class="diff-form">
+        <label class="diff-form__row">
+          <span>A (старое / снимок)</span>
+          <input type="text" id="diff-path-a" class="input-rim" placeholder="SEQ или путь" />
+        </label>
+        <label class="diff-form__row">
+          <span>B (новое / оригинал)</span>
+          <input type="text" id="diff-path-b" class="input-rim" placeholder="SEQ или путь" />
+        </label>
+      </div>
+      <div class="modal__actions diff-form__actions">
+        <button type="button" id="diff-use-current-a" class="btn-gold btn-interactive">A ← текущий</button>
+        <button type="button" id="diff-use-current-b" class="btn-gold btn-interactive">B ← текущий</button>
+        <button type="button" id="diff-run" class="btn-gold btn-interactive">Сравнить</button>
+        <button type="button" id="diff-close" class="btn-gold btn-interactive">Закрыть</button>
+      </div>
+      <p id="diff-summary" class="diff-summary"></p>
+      <pre id="diff-output" class="diff-output panel-scroll"></pre>
+    </div>
+  </div>
+  <div id="map-overlay" class="help-overlay" hidden>
+    <div class="help-overlay__box panel-rim panel-scroll map-overlay__box">
+      <div class="map-overlay__head">
+        <h2>Карта филиалов и модулей</h2>
+        <button type="button" id="map-close" class="btn-gold btn-interactive">Закрыть</button>
+      </div>
+      <p class="subtitle">Клик по пути — открыть в дереве. Зелёный — папка есть на диске.</p>
+      <div id="map-zones" class="map-zones"></div>
+      <div id="map-table-wrap" class="map-table-wrap"></div>
+    </div>
+  </div>
+  <div id="help-overlay" class="help-overlay" hidden>
+    <div class="help-overlay__box panel-rim panel-scroll">
+      <button type="button" id="help-close" class="btn-gold btn-interactive">Закрыть</button>
+      <div id="help-content"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+  <script src="/ui/app.js?v=0.3.8"></script>
+</body>
+</html>
