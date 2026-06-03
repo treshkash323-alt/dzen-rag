@@ -1,11 +1,15 @@
-backend/.venv/
+.catalog-server.lock
 backend/.env
+backend/.venv/
 backend/__pycache__/
 *.pyc
 .pytest_cache/
 
 # Сгенерированный индекс Scan (пересоздаётся локально)
 05data/aviora_catalog_index.json
+05data/aviora_canonical.json
+05data/aviora_search_saves/
+05data/aviora_audio_transcripts/
 
 # Локальные снимки кода (опционально в репо — только README)
 05data/aviora_code_snapshots/*

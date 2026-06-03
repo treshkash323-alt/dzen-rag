@@ -15,6 +15,8 @@ python -m venv .venv
 copy .env.example .env
 ```
 
+**VS Code:** откройте папку `aviora-catalog` → интерпретатор `backend\.venv\Scripts\python.exe` → см. `КАК_ОТКРЫТЬ_В_VSCODE.md`.
+
 2. Каждый сеанс:
 
 ```text
@@ -71,3 +73,8 @@ cd 02modules\aviora-catalog\backend
 ## Безопасность
 
 Не коммитить `backend/.env`. См. `SECURITY.md`.
+
+## Пояснительная записка (филиал Cursor)
+
+Шаблон как ДЗ-7: `09education/PZ_aviora-catalog_Cursor_пояснительная_записка.md`  
+Отчёт для Doc: `09education/PZ_aviora-catalog_Cursor_отчёт_для_сдачи.md`

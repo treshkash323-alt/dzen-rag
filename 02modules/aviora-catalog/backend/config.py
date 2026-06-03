@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 _BACKEND = Path(__file__).resolve().parent
 load_dotenv(_BACKEND / ".env")
 
-VERSION = "0.3.8"
+VERSION = "0.3.13"
 
 
 @dataclass(frozen=True)

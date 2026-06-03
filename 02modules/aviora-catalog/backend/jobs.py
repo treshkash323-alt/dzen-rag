@@ -5,7 +5,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-JobType = Literal["scan", "llm", "upload", "image_transform"]
+JobType = Literal["scan", "llm", "upload", "image_transform", "transcribe"]
 JobStatus = Literal["pending", "running", "done", "cancelled", "error"]
 
 

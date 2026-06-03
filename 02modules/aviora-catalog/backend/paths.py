@@ -23,10 +23,20 @@ WHITELIST_EXTS = {
     ".xls",
     ".pptx",
     ".rar",
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".ogg",
+    ".flac",
+    ".aac",
+    ".wma",
+    ".opus",
 }
 
 EDITABLE_EXTS = {".md", ".txt"}
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+
+AUDIO_EXTS = {".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac", ".wma", ".opus"}
 
 SECRET_READ_PATTERNS = (".env", "*.pem", "id_rsa", "id_rsa.pub")
 

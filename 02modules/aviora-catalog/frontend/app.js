@@ -1,6 +1,16 @@
-/* AIKIVAVIORA Catalog v0.3.8 */
+/* AIKIVAVIORA Catalog v0.3.13 */
 (function () {
-  const UI_VERSION = "0.3.8";
+  const UI_VERSION = "0.3.13";
+  const AUDIO_EXTS = new Set([
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".ogg",
+    ".flac",
+    ".aac",
+    ".wma",
+    ".opus",
+  ]);
   const API = "";
   /** Только эти коды — блокирующее окно; 422/чат/convert — toast */
   const IMG_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
@@ -36,6 +46,7 @@
     currentPath: null,
     dirty: false,
     scanJobId: null,
+    transcribeJobId: null,
     cropper: null,
     readOnly: localStorage.getItem("avioraReadOnly") === "1",
     recent: JSON.parse(localStorage.getItem("avioraRecent") || "[]"),
@@ -44,6 +55,9 @@
     messages: {},
     glossary: {},
     lastHealth: null,
+    markedPrimary: new Set(),
+    lastSearch: null,
+    lastChat: null,
     scanStallAt: null,
     llmStallAt: null,
     chatInFlight: false,
@@ -410,6 +424,117 @@
     if (scanBtn && state.scanJobId) scanBtn.textContent = `Scan ${pct}%`;
   }
 
+  function setTranscribeButtonsDisabled(disabled) {
+    const tr = $("btn-audio-transcribe");
+    const stop = $("btn-audio-transcribe-stop");
+    if (tr) {
+      tr.disabled = disabled;
+      tr.textContent = disabled ? "Идёт…" : "Транскрипт";
+    }
+    if (stop) stop.hidden = !disabled;
+  }
+
+  function renderTranscribeProgress(st) {
+    const box = $("transcribe-progress");
+    if (!box) return;
+    const total = Math.max(st.total || 100, 1);
+    const prog = st.progress || 0;
+    const pct = Math.min(100, Math.round((prog / total) * 100));
+    const fill = $("transcribe-progress-fill");
+    const track = $("transcribe-progress-track");
+    const label = $("transcribe-progress-label");
+    const pctEl = $("transcribe-progress-pct");
+    const fileEl = $("transcribe-progress-file");
+    if (fill) fill.style.width = `${pct}%`;
+    if (track) {
+      track.setAttribute("aria-valuenow", String(pct));
+      track.setAttribute("aria-valuemax", "100");
+    }
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    const msg = (st.message || st.current || "").trim();
+    if (fileEl) {
+      fileEl.textContent = msg || st.status || "Обработка…";
+    }
+    if (label) {
+      if (st.doneLabel) label.textContent = st.doneLabel;
+      else label.textContent = `Транскрипция: ${pct}%`;
+    }
+    const badge = $("status-badge");
+    if (badge && state.transcribeJobId) {
+      badge.textContent = `audio ${pct}%`;
+      badge.className = "badge badge--scan";
+    }
+  }
+
+  function showTranscribeProgress(active, st = {}) {
+    const box = $("transcribe-progress");
+    if (!box) return;
+    if (!active) {
+      box.hidden = true;
+      setTranscribeButtonsDisabled(false);
+      const badge = $("status-badge");
+      if (badge && !state.scanJobId) {
+        badge.className = "badge";
+      }
+      return;
+    }
+    box.hidden = false;
+    setTranscribeButtonsDisabled(true);
+    renderTranscribeProgress(st);
+  }
+
+  function saveTranscribeJob(jobId, path) {
+    localStorage.setItem(
+      "avioraTranscribeJob",
+      JSON.stringify({ job_id: jobId, path: path || "", at: Date.now() })
+    );
+  }
+
+  function clearTranscribeJob() {
+    localStorage.removeItem("avioraTranscribeJob");
+  }
+
+  async function cancelTranscribe() {
+    if (!state.transcribeJobId) return;
+    await api(`/scan/cancel/${state.transcribeJobId}`, { method: "POST" });
+    clearTranscribeJob();
+    toast("Останавливаем транскрипцию…", true);
+  }
+
+  async function resumeTranscribeJobOnLoad() {
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem("avioraTranscribeJob") || "null");
+    } catch {
+      return;
+    }
+    if (!saved?.job_id) return;
+    try {
+      const st = await api(`/audio/transcribe/status/${saved.job_id}`, {
+        silent: true,
+      });
+      if (st.status === "running" || st.status === "pending") {
+        state.transcribeJobId = saved.job_id;
+        toast(
+          "Транскрипция ещё идёт на сервере — показываю полосу прогресса",
+          true
+        );
+        pollTranscribe();
+        return;
+      }
+      clearTranscribeJob();
+      if (st.status === "done" && saved.path) {
+        toast("Транскрипт уже готов — откройте файл снова", true);
+      }
+    } catch {
+      clearTranscribeJob();
+      toast(
+        "Транскрипция прервана: перезапущен сервер или закрыто окно bat. Запустите Транскрипт заново.",
+        false
+      );
+    }
+  }
+
   function showScanProgress(active, st = {}) {
     const box = $("scan-progress");
     if (!box) return;
@@ -542,7 +667,8 @@
       warnBackendVersion(h);
       updateStatusBadge(h);
       if (isHealthApiModern(h)) updateLlmStatusPill(h, false);
-      $("footer-health").textContent = `health ok · ${h.files_indexed} files`;
+      const whisper = h.whisper_ok ? " · whisper" : "";
+      $("footer-health").textContent = `health ok · ${h.files_indexed} files${whisper}`;
       const fv = $("footer-version");
       if (fv) {
         const mismatch = h.version && h.version !== UI_VERSION;
@@ -671,10 +797,153 @@
     updateTreeHint();
   }
 
+  function canonicalHitBadge(r) {
+    if (r.is_primary) {
+      return '<span class="hit-badge hit-badge--primary">★ главный</span> ';
+    }
+    const n = r.duplicate_count || 0;
+    if (n > 1) {
+      return `<span class="hit-badge hit-badge--dup">копия (${n})</span> `;
+    }
+    return "";
+  }
+
+  function canonicalStatusLine(can) {
+    if (!can) return "";
+    if (can.is_primary) {
+      const dup =
+        (can.duplicate_count || 0) > 1
+          ? ` · в группе: ${can.duplicate_count}`
+          : "";
+      const src = can.user_marked ? "ваша метка" : "авто";
+      return `★ Главный (${src})${dup}`;
+    }
+    if ((can.duplicate_count || 0) > 1 && can.primary_path) {
+      return `Копия — главный: ${can.primary_path}`;
+    }
+    return "";
+  }
+
+  async function refreshCanonical() {
+    const data = await api("/canonical", { silent: true }).catch(() => ({
+      marked_paths: [],
+    }));
+    state.markedPrimary = new Set((data.marked_paths || []).map((p) => p));
+    return data;
+  }
+
+  async function toggleCanonicalPrimary() {
+    if (!state.currentPath) {
+      toast("Откройте файл, затем лента → Сервис → ★ Главный", false);
+      return;
+    }
+    const info = await api(
+      `/canonical/info?path=${encodeURIComponent(state.currentPath)}`,
+      { silent: true }
+    );
+    if (info.user_marked) {
+      await api("/canonical/unmark", {
+        method: "POST",
+        body: JSON.stringify({ path: state.currentPath }),
+      });
+      toast("Метка «главный» снята", true);
+    } else {
+      await api("/canonical/mark", {
+        method: "POST",
+        body: JSON.stringify({ path: state.currentPath }),
+      });
+      toast("★ Файл отмечен как главный", true);
+    }
+    await refreshCanonical();
+    const meta = await api(
+      `/file/meta?path=${encodeURIComponent(state.currentPath)}`,
+      { silent: true }
+    );
+    applyCanonicalToLabels(meta.canonical);
+    if ($("search-input").value.trim()) runSearch();
+  }
+
+  function applyCanonicalToLabels(can) {
+    const line = canonicalStatusLine(can);
+    const banner = $("viewer-banner");
+    if (line && banner) {
+      banner.hidden = false;
+      banner.className = "viewer-banner viewer-banner--canonical";
+      banner.textContent = line;
+    } else if (banner && banner.classList.contains("viewer-banner--canonical")) {
+      banner.hidden = true;
+      banner.className = "viewer-banner";
+    }
+  }
+
+  function updateSaveSearchBtn() {
+    const btn = $("btn-save-search");
+    if (!btn) return;
+    const ok = !!(state.lastSearch && state.lastSearch.results?.length);
+    btn.disabled = !ok;
+  }
+
+  function updateSaveChatBtn() {
+    const btn = $("btn-save-chat");
+    if (!btn) return;
+    const ok = !!(state.lastChat && state.lastChat.answer);
+    btn.disabled = !ok;
+  }
+
+  async function saveSearchReport(openAfter) {
+    const snap = state.lastSearch;
+    if (!snap?.results?.length) {
+      toast("Сначала поиск: слово + Enter", false);
+      return;
+    }
+    try {
+      const res = await api("/reports/save-search", {
+        method: "POST",
+        body: JSON.stringify({
+          query: snap.query,
+          branch: snap.branch || "",
+          results: snap.results,
+        }),
+      });
+      toast(`Сохранено: ${res.path}`, true);
+      if (openAfter !== false) {
+        await openFile(res.path);
+      }
+    } catch (err) {
+      toast(err.message || "Не удалось сохранить поиск", false);
+    }
+  }
+
+  async function saveChatReport(openAfter) {
+    const snap = state.lastChat;
+    if (!snap?.answer) {
+      toast("Сначала получите ответ в чате (Send)", false);
+      return;
+    }
+    try {
+      const res = await api("/reports/save-chat", {
+        method: "POST",
+        body: JSON.stringify({
+          question: snap.question,
+          answer: snap.answer,
+          path: snap.path || "",
+        }),
+      });
+      toast(`Сохранено: ${res.path}`, true);
+      if (openAfter !== false) {
+        await openFile(res.path);
+      }
+    } catch (err) {
+      toast(err.message || "Не удалось сохранить ответ", false);
+    }
+  }
+
   async function runSearch() {
     const q = $("search-input").value.trim();
     const branch = $("branch-filter").value;
     if (!q) {
+      state.lastSearch = null;
+      updateSaveSearchBtn();
       loadTree(state.cwd);
       updateTreeHint();
       return;
@@ -688,8 +957,13 @@
     updateTreeHint();
     let url = `/search?q=${encodeURIComponent(q)}`;
     if (branch) url += `&branch=${encodeURIComponent(branch)}`;
+    const chipOn = document.querySelector("#ext-chips .chip--on");
+    const ext = chipOn?.dataset?.ext;
+    if (ext) url += `&ext=${encodeURIComponent(ext)}`;
     const data = await api(url);
     const results = data.results || [];
+    state.lastSearch = { query: q, branch, results };
+    updateSaveSearchBtn();
     const box = $("search-results");
     box.innerHTML = "";
     if (!results.length) {
@@ -706,8 +980,12 @@
         const snip = r.snippet
           ? `<br><small class="hit-snippet">${escapeHtml(r.snippet)}</small>`
           : "";
-        d.innerHTML = `<strong>${escapeHtml(r.name)}</strong><br><small>${escapeHtml(r.path)}</small>${snip}`;
+        d.innerHTML = `${canonicalHitBadge(r)}<strong>${escapeHtml(r.name)}</strong><br><small>${escapeHtml(r.path)}</small>${snip}`;
         d.onclick = () => openFile(r.path);
+        d.oncontextmenu = (ev) => {
+          ev.preventDefault();
+          openFile(r.path).then(() => toggleCanonicalPrimary());
+        };
         box.appendChild(d);
       });
     }
@@ -844,6 +1122,7 @@
       "image-workspace",
       "preview-text",
       "zip-panel",
+      "audio-workspace",
       "props-panel",
       "find-bar",
     ].forEach((id) => {
@@ -860,6 +1139,180 @@
     }
   }
 
+  function formatFileSize(bytes) {
+    if (bytes == null || Number.isNaN(bytes)) return "—";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function formatAudioMetaLine(ameta) {
+    if (!ameta) return "";
+    const parts = [];
+    if (ameta.duration_sec != null) {
+      const s = Math.round(ameta.duration_sec);
+      const m = Math.floor(s / 60);
+      parts.push(`${m}:${String(s % 60).padStart(2, "0")}`);
+    }
+    if (ameta.title) parts.push(ameta.title);
+    if (ameta.artist) parts.push(ameta.artist);
+    return parts.join(" · ");
+  }
+
+  function showAudioWorkspace(path, data, metaLine) {
+    $("audio-workspace").hidden = false;
+    const props = $("props-panel");
+    if (props) props.hidden = true;
+    const player = $("audio-player");
+    if (player) {
+      player.src = data.url || `/file/raw?path=${encodeURIComponent(path)}`;
+      player.load();
+    }
+    const ta = $("audio-transcript");
+    if (ta) ta.value = data.transcript || "";
+    const metaLbl = $("audio-meta-label");
+    if (metaLbl) {
+      const extra = formatAudioMetaLine(data.audio_meta);
+      metaLbl.textContent = `${path} — ${metaLine}${extra ? " · " + extra : ""}`;
+    }
+    const openMd = $("btn-audio-open-md");
+    if (openMd) {
+      if (data.transcript_path) {
+        openMd.hidden = false;
+        openMd.onclick = () => openFile(data.transcript_path);
+      } else {
+        openMd.hidden = true;
+      }
+    }
+    const st = $("audio-transcribe-status");
+    if (st) {
+      if (!data.whisper_ok) {
+        st.hidden = false;
+        st.textContent =
+          "Whisper не установлен: pip install faster-whisper (+ ffmpeg в PATH)";
+      } else if (data.has_transcript) {
+        st.hidden = false;
+        st.textContent = "Транскрипт в индексе — поиск по тексту после Scan";
+      } else {
+        st.hidden = true;
+        st.textContent = "";
+      }
+    }
+    document.title = path + " ⟨audio⟩";
+  }
+
+  async function startAudioTranscribe() {
+    if (!state.currentPath) {
+      toast("Откройте .mp3 / .wav / .m4a в дереве", false);
+      return;
+    }
+    const ext = (state.currentPath.match(/\.[^.]+$/) || [""])[0].toLowerCase();
+    if (!AUDIO_EXTS.has(ext)) {
+      toast("Не аудиофайл", false);
+      return;
+    }
+    let meta = null;
+    try {
+      meta = await api(
+        `/file/meta?path=${encodeURIComponent(state.currentPath)}`,
+        { silent: true }
+      );
+    } catch (_) {
+      meta = null;
+    }
+    const dur = meta?.audio_meta?.duration_sec ?? meta?.duration_sec;
+    if (dur && dur >= 45 * 60) {
+      const mins = Math.round(dur / 60);
+      if (
+        !confirm(
+          `Запись ~${mins} мин (~${Math.round(mins / 60)} ч). ` +
+            "На CPU транскрипция может занять 1–3+ часа. Запустить?"
+        )
+      ) {
+        return;
+      }
+    }
+    if (state.transcribeJobId) {
+      toast("Транскрипция уже идёт — смотрите полосу под лентой", false);
+      showTranscribeProgress(true, { progress: 0, total: 100, message: "Уже запущено…" });
+      return;
+    }
+    showTranscribeProgress(true, {
+      progress: 0,
+      total: 100,
+      message: "Запуск…",
+      status: "pending",
+    });
+    toast("Транскрипция запущена — полоса под лентой, можно работать в каталоге", true);
+    try {
+      const { job_id } = await api("/audio/transcribe/start", {
+        method: "POST",
+        body: JSON.stringify({ path: state.currentPath }),
+      });
+      state.transcribeJobId = job_id;
+      saveTranscribeJob(job_id, state.currentPath);
+      pollTranscribe();
+    } catch (err) {
+      showTranscribeProgress(false);
+      toast(err.message || "Транскрипт недоступен", false);
+    }
+  }
+
+  async function pollTranscribe() {
+    if (!state.transcribeJobId) return;
+    let st;
+    try {
+      st = await api(`/audio/transcribe/status/${state.transcribeJobId}`, {
+        silent: true,
+      });
+    } catch {
+      state.transcribeJobId = null;
+      clearTranscribeJob();
+      showTranscribeProgress(false);
+      toast(
+        "Связь с задачей потеряна (сервер выключен?). Запустите start-api.bat и Транскрипт снова.",
+        false
+      );
+      return;
+    }
+    renderTranscribeProgress(st);
+    showTranscribeProgress(true, st);
+    const hint = $("audio-transcribe-status");
+    if (hint) {
+      hint.hidden = false;
+      hint.textContent = st.message || st.current || "…";
+    }
+    if (st.status === "running" || st.status === "pending") {
+      setTimeout(pollTranscribe, 700);
+      return;
+    }
+    state.transcribeJobId = null;
+    clearTranscribeJob();
+    if (st.status === "done") {
+      const chars = st.result?.chars;
+      showTranscribeProgress(true, {
+        progress: 100,
+        total: 100,
+        doneLabel: "Транскрипт готов",
+        message: chars ? `Символов: ${chars}` : "Готово",
+        status: "done",
+      });
+      toast("Транскрипт готов — текст ниже и в 05data/aviora_audio_transcripts", true);
+      setTimeout(() => showTranscribeProgress(false), 8000);
+      await openFile(state.currentPath);
+      pollHealth();
+      return;
+    }
+    if (st.status === "cancelled") {
+      showTranscribeProgress(false);
+      toast("Транскрипция отменена", false);
+      return;
+    }
+    showTranscribeProgress(false);
+    toast(st.error || "Ошибка транскрипции", false);
+    if (hint) hint.textContent = st.error || "error";
+  }
+
   async function openFile(path) {
     const parent = path.includes("/") ? path.split("/").slice(0, -1).join("/") : "";
     if (parent !== state.cwd) {
@@ -871,12 +1324,7 @@
     hideViewers();
     const meta = await api(`/file/meta?path=${encodeURIComponent(path)}`);
     const props = $("props-panel");
-    const sz =
-      meta.size != null
-        ? (meta.size < 1024
-            ? meta.size + " B"
-            : (meta.size / 1024).toFixed(1) + " KB")
-        : "—";
+    const sz = formatFileSize(meta.size);
     const metaLine = `${meta.name} · ${sz} · ${meta.ext || ""}`;
 
     const data = await api(`/file/content?path=${encodeURIComponent(path)}`);
@@ -884,9 +1332,10 @@
 
     if (data.banner === "secrets") {
       $("viewer-banner").hidden = false;
+      $("viewer-banner").className = "viewer-banner";
       $("viewer-banner").textContent = data.warning || "Секреты — только просмотр";
     } else {
-      $("viewer-banner").hidden = true;
+      applyCanonicalToLabels(meta.canonical);
     }
 
     if (data.kind === "text") {
@@ -937,6 +1386,16 @@
       "branch: " + (meta.branch || "—"),
     ].join("\n");
 
+    if (data.kind === "audio") {
+      showAudioWorkspace(path, data, metaLine);
+      toast(
+        data.has_transcript
+          ? "Аудио + транскрипт. Плеер сверху, текст ниже"
+          : "Аудио: Транскрипт — распознавание (нужен faster-whisper)",
+        true
+      );
+      return;
+    }
     if (data.kind === "pdf") {
       $("pdf-view").hidden = false;
       $("pdf-view").src = `/file/raw?path=${encodeURIComponent(path)}`;
@@ -1168,7 +1627,10 @@
       toast("Скан отменён — индекс неполный, запустите Scan снова", false);
     } else {
       const n = st.result?.indexed ?? st.progress ?? "?";
-      toast(`Скан готов: ${n} файлов в индексе`, true);
+      const dg = st.result?.duplicate_groups;
+      const dupNote =
+        dg != null ? ` · групп дубликатов: ${dg}` : "";
+      toast(`Скан готов: ${n} файлов в индексе${dupNote}`, true);
     }
     endScanProgress(st, ok);
     pollHealth();
@@ -1176,6 +1638,11 @@
   }
 
   async function stopAll() {
+    if (state.transcribeJobId) {
+      await cancelTranscribe();
+      state.transcribeJobId = null;
+      showTranscribeProgress(false);
+    }
     if (state.scanJobId) {
       await api(`/scan/cancel/${state.scanJobId}`, { method: "POST" });
       state.scanJobId = null;
@@ -1190,6 +1657,7 @@
   async function resetSession() {
     if (!confirm("Сбросить сессию? Файлы на диске не удаляются.")) return;
     await api("/session/reset", { method: "POST" });
+    state.markedPrimary = new Set();
     state.currentPath = null;
     state.dirty = false;
     hideViewers();
@@ -1500,7 +1968,7 @@
       let answer = (res.answer || "").trim();
       if (res.cancelled) {
         answer =
-          "Запрос отменён (Stop). Перезапустите backend :8002 (v0.3.8) и обновите страницу Ctrl+Shift+R.";
+          "Запрос отменён (Stop). Перезапустите backend :8002 (v0.3.10) и обновите страницу Ctrl+Shift+R.";
         await resetStuckChatCancel();
       }
       else if (!answer) {
@@ -1508,12 +1976,20 @@
           "Пустой ответ модели. Запустите LM Studio → Load model → Start server (:1234), " +
           "или укажите ключ DeepSeek в .env.";
       }
-      if (res.provider) answer += `\n\n[${res.provider}]`;
-      if (wait) wait.textContent = answer;
-      else appendChatBubble("bot", answer);
+      const providerTag = res.provider ? `\n\n[${res.provider}]` : "";
+      const answerForSave = (res.answer || "").trim();
+      const answerDisplay = answerForSave + providerTag;
+      state.lastChat = {
+        question: msg,
+        answer: answerForSave,
+        path: state.currentPath || "",
+      };
+      updateSaveChatBtn();
+      if (wait) wait.textContent = answerDisplay;
+      else appendChatBubble("bot", answerDisplay);
       scrollChatToBottom();
       pollHealth();
-      toast("Ответ в чате справа ↑", true);
+      toast("Ответ в чате — 💾 Ответ сохранит в .md", true);
     } catch (err) {
       let errText = "Ошибка чата — см. подсказку внизу";
       if (err.message === "ERR_LLM") {
@@ -2031,6 +2507,29 @@
         );
         loadTree(state.cwd);
         break;
+      case "mark-primary":
+        await toggleCanonicalPrimary();
+        break;
+      case "save-search":
+        await saveSearchReport(true);
+        break;
+      case "save-chat":
+        await saveChatReport(true);
+        break;
+      case "open-saves":
+        await loadTree("05data/aviora_search_saves");
+        toast("Папка сохранённых отчётов", true);
+        break;
+      case "audio-transcribe":
+        await startAudioTranscribe();
+        break;
+      case "audio-hint":
+        toast("Откройте .mp3 / .wav / .m4a в дереве — плеер и Транскрипт", true);
+        break;
+      case "open-transcripts":
+        await loadTree("05data/aviora_audio_transcripts");
+        toast("Транскрипты аудио", true);
+        break;
       case "reset":
         resetSession();
         break;
@@ -2103,6 +2602,13 @@
     bindSaveButtons();
     bindShareButtons();
     bindChat();
+    $("btn-save-search")?.addEventListener("click", () => saveSearchReport(true));
+    $("btn-save-chat")?.addEventListener("click", () => saveChatReport(true));
+    $("btn-audio-transcribe")?.addEventListener("click", () => startAudioTranscribe());
+    $("btn-audio-transcribe-stop")?.addEventListener("click", () => cancelTranscribe());
+    $("btn-transcribe-cancel")?.addEventListener("click", () => cancelTranscribe());
+    updateSaveSearchBtn();
+    updateSaveChatBtn();
     $("btn-scan").onclick = startScan;
     $("btn-scan-cancel")?.addEventListener("click", async () => {
       if (!state.scanJobId) {
@@ -2412,6 +2918,8 @@
       body: JSON.stringify({ enabled: state.llmEnabled }),
     }).catch(() => null);
     await pollHealth();
+    await resumeTranscribeJobOnLoad();
+    await refreshCanonical();
     await refreshLlmStatus(true);
     if (!state.llmEnabled) {
       toast(

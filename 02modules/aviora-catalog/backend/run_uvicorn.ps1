@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $here = $PSScriptRoot
 Set-Location $here
 $py = Join-Path $here ".venv\Scripts\python.exe"
-$want = "0.3.8"
+$want = "0.3.11"
 
 if (-not (Test-Path $py)) {
     Write-Host "Missing .venv - see start-api.bat"

@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>AIKIVAVIORA Catalog</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" />
-  <link rel="stylesheet" href="/ui/style.css?v=0.3.8" />
+  <link rel="stylesheet" href="/ui/style.css?v=0.3.13" />
 </head>
 <body>
   <div id="splash" class="splash" aria-hidden="true">
@@ -148,13 +148,25 @@
               <button type="button" class="ribbon-labeled" data-cmd="studio-help"><span class="ribbon-labeled__icon">i</span><span class="ribbon-labeled__text">Справка</span></button>
             </div>
           </div>
+          <div class="ribbon-panel">
+            <span class="ribbon-panel__title">Аудио</span>
+            <div class="ribbon-panel__row">
+              <button type="button" class="ribbon-labeled" data-cmd="audio-hint"><span class="ribbon-labeled__icon">🎧</span><span class="ribbon-labeled__text">Открыть</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="audio-transcribe" data-tip="faster-whisper, нужен pip install"><span class="ribbon-labeled__icon">📝</span><span class="ribbon-labeled__text">Транскрипт</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="open-transcripts" data-tip="05data/aviora_audio_transcripts"><span class="ribbon-labeled__icon">📂</span><span class="ribbon-labeled__text">Тексты</span></button>
+            </div>
+          </div>
         </div>
         <div class="ribbon-page" data-page="service" hidden>
           <div class="ribbon-panel">
             <span class="ribbon-panel__title">Каталог</span>
             <div class="ribbon-panel__row">
               <button type="button" class="ribbon-labeled" data-cmd="scan"><span class="ribbon-labeled__icon">◎</span><span class="ribbon-labeled__text">Scan</span></button>
-              <button type="button" class="ribbon-labeled" data-cmd="star"><span class="ribbon-labeled__icon">★</span><span class="ribbon-labeled__text">Закладка</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="star"><span class="ribbon-labeled__icon">☆</span><span class="ribbon-labeled__text">Закладка</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="mark-primary" data-tip="Главный файл среди копий (ПКМ в поиске)"><span class="ribbon-labeled__icon">★</span><span class="ribbon-labeled__text">Главный</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="save-search" data-tip="Сохранить последний поиск в .md"><span class="ribbon-labeled__icon">💾</span><span class="ribbon-labeled__text">Поиск MD</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="save-chat" data-tip="Сохранить последний ответ чата"><span class="ribbon-labeled__icon">📝</span><span class="ribbon-labeled__text">Чат MD</span></button>
+              <button type="button" class="ribbon-labeled" data-cmd="open-saves" data-tip="05data/aviora_search_saves"><span class="ribbon-labeled__icon">📂</span><span class="ribbon-labeled__text">Отчёты</span></button>
               <button type="button" class="ribbon-labeled" data-cmd="reset"><span class="ribbon-labeled__icon">↺</span><span class="ribbon-labeled__text">Сброс</span></button>
             </div>
           </div>
@@ -203,6 +215,23 @@
       <p id="scan-progress-file" class="scan-progress__file">Ожидание…</p>
     </div>
 
+    <div id="transcribe-progress" class="scan-progress transcribe-progress panel-rim panel-rim--soft" hidden aria-live="polite">
+      <div class="scan-progress__head">
+        <span id="transcribe-progress-label" class="scan-progress__label">Транскрипция аудио…</span>
+        <span id="transcribe-progress-pct" class="scan-progress__pct">0%</span>
+        <button type="button" id="btn-transcribe-cancel" class="btn-gold btn-interactive scan-progress__stop">Стоп</button>
+      </div>
+      <div id="transcribe-progress-track" class="scan-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="transcribe-progress-fill" class="scan-progress__fill transcribe-progress__fill"></div>
+      </div>
+      <p id="transcribe-progress-file" class="scan-progress__file">Подготовка…</p>
+      <p id="transcribe-progress-hint" class="transcribe-progress__hint">
+        Пока идёт распознавание: можно слушать файл и листать каталог. Обязательно оставьте открытым
+        <strong>одно</strong> окно сервера (start-api.bat или терминал VS Code) — закрытие = обрыв задачи.
+        F5 в браузере допустим, если сервер не выключали. Текст → ниже и в 05data/aviora_audio_transcripts.
+      </p>
+    </div>
+
     <main class="main-grid">
       <aside class="panel panel-rim panel-scroll" id="panel-left">
         <div class="panel__head">
@@ -214,6 +243,7 @@
             <button type="button" data-ext=".jpg" class="chip">img</button>
             <button type="button" data-ext=".zip" class="chip">zip</button>
             <button type="button" data-ext=".py" class="chip">code</button>
+            <button type="button" data-ext="audio" class="chip">audio</button>
           </div>
           <select id="branch-filter" class="input-rim" aria-label="Фильтр ветки" data-tip="Не модель ИИ — только фильтр папок Cursor/Claude">
             <option value="">Ветка: все</option>
@@ -221,6 +251,9 @@
             <option value="Claude">Claude</option>
             <option value="AIKIVAVIORA">AIKIVAVIORA</option>
           </select>
+          <button type="button" id="btn-save-search" class="btn-gold btn-interactive btn-save-search" data-tip="Сохранить список поиска в 05data/aviora_search_saves" disabled>
+            💾 Поиск
+          </button>
         </div>
         <p id="tree-hint" class="tree-hint">📁 — папка. md/pdf — фильтр дерева. Поиск по всему каталогу: текст + Enter (нужен Scan, idx в шапке).</p>
         <div id="tree" class="tree" role="tree"></div>
@@ -283,6 +316,17 @@
           <div id="figma-canvas" class="figma-canvas panel-scroll" tabindex="0"></div>
         </div>
         <iframe id="pdf-view" class="pdf-view" hidden title="PDF"></iframe>
+        <div id="audio-workspace" class="audio-workspace" hidden>
+          <div class="audio-toolbar panel-rim--inset">
+            <audio id="audio-player" class="audio-player" controls preload="metadata"></audio>
+            <button type="button" id="btn-audio-transcribe" class="btn-gold btn-interactive">Транскрипт</button>
+            <button type="button" id="btn-audio-transcribe-stop" class="btn-gold btn-interactive" hidden>Стоп</button>
+            <button type="button" id="btn-audio-open-md" class="btn-gold btn-interactive" hidden>Открыть .md</button>
+            <span id="audio-meta-label" class="save-path-label"></span>
+          </div>
+          <p id="audio-transcribe-status" class="audio-status" hidden></p>
+          <textarea id="audio-transcript" class="audio-transcript input-rim" readonly placeholder="Транскрипт появится здесь после распознавания…"></textarea>
+        </div>
         <div id="image-workspace" class="image-workspace" hidden>
           <div class="image-toolbar">
             <button type="button" id="img-rot-l" class="btn-gold btn-interactive">↺ 90°</button>
@@ -324,6 +368,9 @@
             <option value="deepseek">deepseek</option>
             <option value="lmstudio">lmstudio</option>
           </select>
+          <button type="button" id="btn-save-chat" class="btn-gold btn-interactive" data-tip="Сохранить последний вопрос и ответ в .md" disabled>
+            💾 Ответ
+          </button>
         </div>
         <div id="chat-messages" class="chat-messages"></div>
         <div id="chat-busy" class="chat-busy" hidden aria-live="polite">
@@ -349,7 +396,7 @@
 
     <footer class="footer panel-rim panel-rim--soft">
       <span>© 2026 · <strong>Игорь Кашинцев</strong> · веб-разработка</span> ·
-      <span id="footer-version">v0.3.8</span> ·
+      <span id="footer-version">v0.3.13</span> ·
       <span id="footer-health">health …</span> ·
       API: <code id="footer-api-base">http://127.0.0.1:8002</code> ·
       <a href="/docs" target="_blank" rel="noreferrer" data-tip="Swagger API">Swagger</a> ·
@@ -422,6 +469,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
-  <script src="/ui/app.js?v=0.3.8"></script>
+  <script src="/ui/app.js?v=0.3.13"></script>
 </body>
 </html>

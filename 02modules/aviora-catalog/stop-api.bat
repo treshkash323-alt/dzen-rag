@@ -1,13 +1,12 @@
 @echo off
-chcp 65001 >nul
-title Остановка Aviora Catalog :8002
+setlocal EnableExtensions
+title Stop Aviora Catalog :8002
 
-echo Останавливаю процесс на порту 8002...
-powershell -NoProfile -Command ^
-  "$c = Get-NetTCPConnection -LocalPort 8002 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1; ^
-   if (-not $c) { Write-Host 'Порт 8002 свободен — сервер уже выключен.'; exit 0 }; ^
-   $pid = $c.OwningProcess; Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue; ^
-   Write-Host \"Остановлен PID $pid\""
+set "SCRIPTS=%~dp0scripts"
+
+echo Stopping process on port 8002...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPTS%\port8002-stop.ps1"
 
 echo.
 pause
+endlocal

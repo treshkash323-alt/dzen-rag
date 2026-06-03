@@ -563,6 +563,21 @@ body {
   transition: width 0.35s ease;
 }
 
+.transcribe-progress:not([hidden]) {
+  display: block;
+}
+
+.transcribe-progress__fill {
+  background: linear-gradient(90deg, #a78bfa, #38bdf8);
+}
+
+.transcribe-progress__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
 .scan-progress__file {
   margin: 0.35rem 0 0;
   font-size: 0.7rem;
@@ -858,6 +873,94 @@ body {
 .hit-snippet {
   color: var(--muted);
   font-style: italic;
+}
+
+.hit-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  margin-right: 0.2rem;
+  vertical-align: middle;
+}
+
+.hit-badge--primary {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.hit-badge--dup {
+  color: var(--muted);
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--border);
+}
+
+.audio-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  flex: 1;
+  min-height: 12rem;
+}
+
+.audio-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.audio-player {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+  max-width: 100%;
+}
+
+.audio-transcript {
+  flex: 1 1 auto;
+  min-height: 10rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.audio-status {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.viewer-banner--canonical {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fde68a;
+}
+
+.btn-save-search {
+  width: 100%;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.chat-head {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.chat-head .input-rim {
+  flex: 1 1 6rem;
+  min-width: 5rem;
+}
+
+.chat-head .btn-gold {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
 }
 
 .search-results .hit {

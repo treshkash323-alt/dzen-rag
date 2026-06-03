@@ -1,22 +1,23 @@
 @echo off
 setlocal EnableExtensions
-chcp 65001 >nul
-title Aviora Catalog — сервер :8002
+title Aviora Catalog :8002
 
 set "ROOT=%~dp0"
 set "BACKEND=%ROOT%backend"
 set "PY=%BACKEND%\.venv\Scripts\python.exe"
-set "WANT_VER=0.3.8"
+set "WANT_VER=0.3.13"
+set "SCRIPTS=%ROOT%scripts"
+set "LOCK=%ROOT%.catalog-server.lock"
 
 cd /d "%BACKEND%"
 if errorlevel 1 (
-    echo [Ошибка] Нет папки backend.
+    echo [ERROR] backend folder not found.
     pause
     exit /b 1
 )
 
 if not exist "%PY%" (
-    echo [Ошибка] Нет .venv — один раз в PowerShell:
+    echo [ERROR] .venv not found. Run once in PowerShell:
     echo   cd "%BACKEND%"
     echo   python -m venv .venv
     echo   .venv\Scripts\pip install -r requirements.txt
@@ -26,60 +27,54 @@ if not exist "%PY%" (
 )
 
 echo.
-echo  === Aviora Catalog %WANT_VER% ===
+echo === Aviora Catalog %WANT_VER% ===
 echo.
 
-REM Проверка порта 8002: если занят — health; чужой/старый процесс — убить
-powershell -NoProfile -Command ^
-  "$want = '%WANT_VER%'; ^
-   $c = Get-NetTCPConnection -LocalPort 8002 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1; ^
-   if (-not $c) { exit 10 }; ^
-   $pid = $c.OwningProcess; ^
-   try { ^
-     $h = Invoke-RestMethod 'http://127.0.0.1:8002/health' -TimeoutSec 4; ^
-     if ($h.version -eq $want) { ^
-       Write-Host \"[OK] Уже работает v$($h.version) (PID $pid). Открою браузер.\"; ^
-       Write-Host 'НЕ закрывайте окно того процесса, который держит :8002.'; ^
-       exit 0 ^
-     }; ^
-     Write-Host \"[!!] На :8002 старый API v$($h.version), нужен $want — перезапуск PID $pid\"; ^
-   } catch { ^
-     Write-Host \"[!!] Порт занят PID $pid, но /health не отвечает — перезапуск\"; ^
-   }; ^
-   Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue; ^
-   Start-Sleep -Seconds 2; ^
-   exit 11"
+if exist "%LOCK%" (
+    echo [INFO] Lock file exists - another start may be in progress.
+    echo        Waiting 5 sec before check...
+    timeout /t 5 /nobreak >nul
+)
 
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPTS%\port8002-check.ps1" -WantVersion %WANT_VER%
 set "PORTCHK=%ERRORLEVEL%"
+
 if "%PORTCHK%"=="0" (
-    start "" "http://127.0.0.1:8002/ui/"
     echo.
-    echo  Браузер открыт. Это окно можно закрыть — сервер в ДРУГОМ терминале.
-    echo  Если Catalog не открывается — запустите stop-api.bat, затем start-api.bat снова.
+    echo ============================================================
+    echo  Server ALREADY running on :8002
+    echo  Close THIS window - keep the OTHER black cmd with uvicorn
+    echo  Stop server: Ctrl+C in that window OR stop-api.bat
+    echo ============================================================
+    echo.
+    start "" "http://127.0.0.1:8002/ui/"
     pause
     exit /b 0
 )
 
 if "%PORTCHK%"=="11" (
-    echo  Старый процесс на :8002 остановлен, запускаю заново...
+    echo Old process on :8002 stopped. Starting again...
     echo.
 )
 
-echo  ╔══════════════════════════════════════════════════════════╗
-echo  ║  НЕ ЗАКРЫВАЙТЕ ЭТО ЧЁРНОЕ ОКНО — пока работает Catalog  ║
-echo  ║  Остановка: Ctrl+C здесь или stop-api.bat               ║
-echo  ╚══════════════════════════════════════════════════════════╝
+echo %DATE% %TIME%> "%LOCK%"
+
+echo ============================================================
+echo  THIS window = Catalog server. Do NOT close while working.
+echo  Do NOT run start-api.bat again - use stop-api.bat first.
+echo  Stop: Ctrl+C here OR stop-api.bat
+echo ============================================================
 echo.
 echo  UI: http://127.0.0.1:8002/ui/
 echo.
 
-REM Браузер — только когда /health ответит (фоновое ожидание)
-start "aviora-open-ui" /min cmd /c ""powershell -NoProfile -Command ^
-  \"for ($i=0; $i -lt 90; $i++) { try { $h = Invoke-RestMethod 'http://127.0.0.1:8002/health' -TimeoutSec 2; if ($h.version) { Start-Process 'http://127.0.0.1:8002/ui/'; exit 0 } } catch {}; Start-Sleep -Seconds 1 }\"\""
+start /min "" powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPTS%\wait-health-open.ps1"
 
 "%PY%" -m uvicorn app:app --host 127.0.0.1 --port 8002
 
+if exist "%LOCK%" del /f /q "%LOCK%" >nul 2>&1
+
 echo.
-echo  Сервер остановлен (окно можно закрыть).
+echo Server stopped.
 pause
 endlocal

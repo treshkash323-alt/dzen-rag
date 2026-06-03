@@ -20,6 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from canonical_registry import CANONICAL
 from catalog_index import INDEX
 from config import VERSION, Settings, load_settings
 from jobs import JOBS
@@ -31,6 +32,15 @@ from llm_client import (
     llm_ok,
 )
 from catalog_map import build_catalog_map
+from audio_transcribe import (
+    ffmpeg_available,
+    max_transcribe_mb,
+    probe_audio_meta,
+    run_transcription,
+    transcript_for_source,
+    whisper_available,
+)
+from report_saves import save_chat_report, save_search_report
 from code_snapshots import (
     create_batch_snapshots,
     create_code_snapshot,
@@ -41,6 +51,7 @@ from code_snapshots import (
 from paths import (
     CODE_EXTS,
     EDITABLE_EXTS,
+    AUDIO_EXTS,
     IMAGE_EXTS,
     WHITELIST_EXTS,
     CatalogError,
@@ -117,32 +128,30 @@ def _catalog_hits_for_chat(message: str, *, limit: int = 15) -> str:
             "Индекс каталога пуст (нужен Scan в UI). "
             "Поиск слева: ввести слово и Enter.\n"
         )
-    hits = INDEX.search(message, limit=limit)
+    hits = INDEX.search(message, limit=limit * 4)
     if not hits:
         for word in message.replace(",", " ").split():
             w = word.strip().lower()
             if len(w) < 3:
                 continue
-            hits = INDEX.search(w, limit=limit)
+            hits = INDEX.search(w, limit=limit * 4)
             if hits:
                 break
     if not hits:
         return "По индексу совпадений для этого вопроса нет.\n"
-    lines = ["Совпадения в индексе каталога:"]
-    for h in hits:
-        sn = (h.get("snippet") or "").strip()
-        extra = f" — …{sn}…" if sn else ""
-        lines.append(f"- {h.get('path')}{extra}")
-    return "\n".join(lines) + "\n"
+    hits = CANONICAL.enrich_search_results(hits)[:limit]
+    return CANONICAL.format_chat_block(hits, limit=limit)
 
 
 @app.on_event("startup")
 def _startup():
     logging.basicConfig(level=logging.INFO)
     s = _settings()
-    n = INDEX.load_cache(str(s.catalog_root))
+    root = str(s.catalog_root)
+    n = INDEX.load_cache(root)
+    CANONICAL.load(root)
     JOBS.reset_llm_cancel()
-    _log("INFO", f"Aviora Catalog v{VERSION} root={s.catalog_root} index_cache={n}")
+    _log("INFO", f"Aviora Catalog v{VERSION} root={root} index_cache={n}")
 
 
 def _mount_cors():
@@ -177,6 +186,10 @@ def health(
         "module": "aviora-catalog",
         "version": VERSION,
         "files_indexed": INDEX.count,
+        "duplicate_groups": CANONICAL.list_all().get("duplicate_groups", 0),
+        "whisper_ok": whisper_available(),
+        "ffmpeg_ok": ffmpeg_available(),
+        "max_audio_transcribe_mb": max_transcribe_mb(),
         "llm_ok": llm_ok(s) and enabled and _session_llm_enabled,
         "read_only": _read_only_active(s, None),
         "catalog_root": str(s.catalog_root),
@@ -226,6 +239,11 @@ def file_meta_route(path: str = Query(...)) -> dict[str, Any]:
         raise CatalogError("ERR_NOT_FOUND", "File not found")
     meta = file_meta(target, root)
     meta["policy"] = read_policy(target)
+    meta["canonical"] = CANONICAL.info(rel_path(root, target))
+    if target.suffix.lower() in AUDIO_EXTS:
+        am = probe_audio_meta(target)
+        meta["audio_meta"] = am
+        meta["duration_sec"] = am.get("duration_sec")
     return meta
 
 
@@ -260,6 +278,22 @@ def _read_file_payload(s: Settings, path: str) -> dict[str, Any]:
         return {"path": path, "kind": "pdf", "url": f"/file/raw?path={path}"}
     if ext in IMAGE_EXTS:
         return {"path": path, "kind": "image", "url": f"/file/raw?path={path}"}
+    if ext in AUDIO_EXTS:
+        tr = transcript_for_source(s, path)
+        ameta = probe_audio_meta(target)
+        return {
+            "path": path,
+            "kind": "audio",
+            "url": f"/file/raw?path={path}",
+            "size": target.stat().st_size,
+            "audio_meta": ameta,
+            "transcript": tr.get("text") or "",
+            "transcript_path": tr.get("transcript_rel"),
+            "has_transcript": tr.get("has_transcript", False),
+            "whisper_ok": whisper_available(),
+            "max_transcribe_mb": max_transcribe_mb(),
+            "read_only": True,
+        }
     if ext == ".docx":
         from catalog_index import INDEX as _idx
 
@@ -781,7 +815,8 @@ def chat(body: ChatBody) -> dict[str, Any]:
     system = (
         "Ты помощник по каталогу Python_kash (Aviora Catalog). "
         "Отвечай по-русски, кратко. Используй блок «Индекс» для путей к проектам; "
-        "не выдумывай файлы. Если индекс пуст — скажи выполнить Scan."
+        "строки с ★ — рекомендуемый главный файл среди копий с тем же текстом. "
+        "Не выдумывай файлы. Если индекс пуст — скажи выполнить Scan."
     )
     user = (
         f"Файл: {body.path or '(не открыт)'}\n\n"
@@ -894,6 +929,9 @@ def scan_start() -> dict[str, Any]:
                     setattr(job, "current", name),
                 ),
             )
+            if not result.get("cancelled"):
+                dup = CANONICAL.rebuild_duplicate_groups(INDEX)
+                result = {**result, **dup}
             job.result = result
             job.status = "cancelled" if result.get("cancelled") else "done"
             _log("INFO", f"scan done {result}")
@@ -904,6 +942,66 @@ def scan_start() -> dict[str, Any]:
 
     threading.Thread(target=run, daemon=True).start()
     return {"job_id": job.id}
+
+
+class TranscribeBody(BaseModel):
+    path: str = Field(..., min_length=1)
+
+
+@app.post("/audio/transcribe/start")
+def audio_transcribe_start(body: TranscribeBody):
+    s = _settings()
+    rel = body.path.replace("\\", "/")
+    target = resolve_path(s, rel)
+    if target.suffix.lower() not in AUDIO_EXTS:
+        raise CatalogError("ERR_NOT_AUDIO", "Not an audio file")
+    if not whisper_available():
+        raise CatalogError(
+            "ERR_WHISPER_MISSING",
+            "pip install faster-whisper in backend/.venv (see README)",
+        )
+    job = JOBS.create("transcribe")
+    job.status = "running"
+    job.current = rel
+    job.total = 100
+    job.progress = 0
+    job.message = "Старт…"
+
+    def run():
+        try:
+            result = run_transcription(
+                s,
+                rel,
+                cancel_check=lambda: job.cancelled,
+                on_message=lambda m: setattr(job, "message", m),
+                on_progress=lambda p, t, m: (
+                    setattr(job, "progress", p),
+                    setattr(job, "total", t),
+                    setattr(job, "message", m),
+                ),
+            )
+            if result.get("cancelled"):
+                job.status = "cancelled"
+            else:
+                job.result = result
+                job.status = "done"
+                INDEX.patch_audio_transcript(s, rel)
+                _log("INFO", f"transcribe done {rel} -> {result.get('transcript_path')}")
+        except Exception as exc:
+            job.status = "error"
+            job.error = str(exc)
+            _log("ERROR", f"transcribe failed {rel}: {exc}")
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"job_id": job.id}
+
+
+@app.get("/audio/transcribe/status/{job_id}")
+def audio_transcribe_status(job_id: str):
+    job = JOBS.get(job_id)
+    if not job or job.type != "transcribe":
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job.to_dict()
 
 
 @app.get("/scan/status/{job_id}")
@@ -925,8 +1023,86 @@ def search(
     q: str = "",
     ext: str | None = None,
     branch: str | None = None,
+    primary_first: bool = True,
 ):
-    return {"results": INDEX.search(q, ext=ext, branch=branch)}
+    raw = INDEX.search(q, ext=ext, branch=branch, limit=200)
+    results = (
+        CANONICAL.enrich_search_results(raw)[:100]
+        if primary_first
+        else raw[:100]
+    )
+    return {"results": results}
+
+
+class CanonicalMarkBody(BaseModel):
+    path: str = Field(..., min_length=1)
+    note: str = ""
+
+
+@app.get("/canonical")
+def canonical_list():
+    return CANONICAL.list_all()
+
+
+@app.get("/canonical/info")
+def canonical_info(path: str = Query(...)):
+    return CANONICAL.info(path)
+
+
+@app.post("/canonical/mark")
+def canonical_mark(body: CanonicalMarkBody):
+    s = _settings()
+    resolve_path(s, body.path)
+    return CANONICAL.mark_primary(body.path, note=body.note)
+
+
+@app.post("/canonical/unmark")
+def canonical_unmark(body: CanonicalMarkBody):
+    s = _settings()
+    resolve_path(s, body.path)
+    return CANONICAL.unmark(body.path)
+
+
+class SearchSaveBody(BaseModel):
+    query: str = Field(..., min_length=1)
+    branch: str = ""
+    results: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class ChatSaveBody(BaseModel):
+    question: str = Field(..., min_length=1)
+    answer: str = Field(..., min_length=1)
+    path: str = ""
+
+
+@app.post("/reports/save-search")
+def reports_save_search(body: SearchSaveBody):
+    s = _settings()
+    if not body.results:
+        raise HTTPException(status_code=400, detail="Нет результатов для сохранения")
+    out = save_search_report(
+        s,
+        query=body.query.strip(),
+        branch=body.branch.strip(),
+        results=body.results,
+        catalog_version=VERSION,
+    )
+    _log("INFO", f"search report saved {out['path']}")
+    return out
+
+
+@app.post("/reports/save-chat")
+def reports_save_chat(body: ChatSaveBody):
+    s = _settings()
+    out = save_chat_report(
+        s,
+        question=body.question.strip(),
+        answer=body.answer.strip(),
+        file_path=body.path.strip(),
+        catalog_version=VERSION,
+    )
+    _log("INFO", f"chat report saved {out['path']}")
+    return out
 
 
 @app.get("/logs/tail")
@@ -939,6 +1115,7 @@ def session_reset() -> dict[str, Any]:
     global _session_read_only, _session_llm_enabled
     cancelled = JOBS.cancel_all()
     INDEX.clear()
+    CANONICAL.clear()
     _session_read_only = False
     _session_llm_enabled = True
     invalidate_llm_health_cache()

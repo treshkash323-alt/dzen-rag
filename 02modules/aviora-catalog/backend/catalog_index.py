@@ -8,6 +8,7 @@ from typing import Any
 
 from config import Settings
 from paths import (
+    AUDIO_EXTS,
     CODE_EXTS,
     TEXT_EXTS,
     WHITELIST_EXTS,
@@ -238,6 +239,11 @@ class CatalogIndex:
                 text = self._extract_docx(path)
             elif ext == ".xlsx":
                 text = self._extract_xlsx(path)
+            elif ext in AUDIO_EXTS:
+                from audio_transcribe import transcript_text_for_index
+
+                tr = transcript_text_for_index(settings, rel)
+                text = rel if not tr else f"{rel}\n{tr}"
             new_entries.append(
                 IndexEntry(
                     path=rel,
@@ -258,6 +264,23 @@ class CatalogIndex:
             pass
         return {"cancelled": False, "indexed": len(new_entries), "total": total}
 
+    def patch_audio_transcript(self, settings: Settings, source_rel: str) -> bool:
+        from audio_transcribe import transcript_text_for_index
+
+        norm = source_rel.replace("\\", "/")
+        tr = transcript_text_for_index(settings, norm)
+        text = norm if not tr else f"{norm}\n{tr}"
+        with self._lock:
+            for e in self._entries:
+                if e.path == norm:
+                    e.text = text
+                    try:
+                        self.save_cache(str(catalog_root(settings)))
+                    except Exception:
+                        pass
+                    return True
+        return False
+
     def search(
         self,
         q: str,
@@ -270,8 +293,12 @@ class CatalogIndex:
         if not q_low:
             return []
         results: list[dict[str, Any]] = []
+        ext_low = (ext or "").lower()
         for e in self.entries():
-            if ext and (e.ext or "") != ext.lower():
+            if ext_low == "audio":
+                if (e.ext or "") not in AUDIO_EXTS:
+                    continue
+            elif ext_low and (e.ext or "") != ext_low:
                 continue
             if branch and (e.branch or "") != branch:
                 continue
